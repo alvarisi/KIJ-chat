@@ -41,45 +41,12 @@ int main(int argc, char *argv[])
      while(1){
         clilen = sizeof(cli_addr);
         newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &clilen);
-        if (newsockfd < 0) error("ERROR on accept");
+        if (newsockfd < 0) error("ERROR on accept\n");
+        else printf("SUCCESS on accept\n");
         bzero(buffer,256);
         n = read(newsockfd,buffer,255);
-        if (n < 0) error("ERROR reading from socket");
-
-        char code[5];
-        int i;
-        for(i=0; i<strlen(code)-1; i++){
-            if(buffer[i]==' ' || buffer[i]=='\0'){
-                code[i] = '\0';
-                i += 1;
-                break;
-            }
-            code[i] = buffer[i];
-        }
-
-        if(strcmp(code,"send")==0){
-            char message[256];
-            if(i<strlen(buffer)){
-                int j;
-                for(j=i;j<strlen(buffer)-1;j++){
-                    message[j] = buffer[j];
-                }
-                printf("Client message: %s\n", message);
-            }
-            else{
-                printf("Client sent no message\n");
-            }
-            char msg[100];
-            scanf("%s",msg);
-            n = write(newsockfd,msg,strlen(msg));
-            if (n < 0) error("ERROR writing to socket");
-        }
-        else if(strcmp(code,"end")==0){
-            sleep(2);
-            close(newsockfd);
-            close(sockfd);
-            break;
-        }
+        if (n < 0) error("ERROR reading from socket\n");
+        printf("%s\n",buffer);
      }
      return 0;
 }

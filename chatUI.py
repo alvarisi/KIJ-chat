@@ -18,12 +18,12 @@ try:
 		# Get the list sockets which are readable
 		ready_to_read, ready_to_write, in_error = select.select(socket_list , [], [])
 		for sock in ready_to_read: 
-			if sock == client_socket: #receive
+                        if sock == client_socket: #receive
 				#recvhandler(sock)
 				#sys.stdout.flush()
-				#sys.stdout.write('>> ')
+				sys.stdout.write('>> ')
 			else:	
-				#sys.stdout.write('>> ')	
+				sys.stdout.write('>> ')	
 				#typehandler()
 
 root = Tk(  )
