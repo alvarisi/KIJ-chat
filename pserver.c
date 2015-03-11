@@ -23,6 +23,9 @@ int total_active_client = 0;
 int total_client = 2;
 const int MAX_SESS = (CHAR_BIT * sizeof(int) - 1) / 3 + 2;
 
+// Pendefinisian struct
+
+// List detail client
 typedef struct Client{
     char username[MAX_USERNAME];
     char password[MAX_PASSWORD];
@@ -34,6 +37,7 @@ typedef struct Client_List{
     Client* first;
 } Client_List;
 
+// List detail klien aktif
 typedef struct Active_Client{
     int active_sock, active_session;
     char client_IP[INET_ADDRSTRLEN];
@@ -45,6 +49,7 @@ typedef struct Active_Client_List{
     Active_Client* first;
 } Active_Client_List;
 
+// Struct untuk argumen fungsi thread
 typedef struct Thread_Arg{
     int receiver_sock;
     char receiver_IP[INET_ADDRSTRLEN];
@@ -67,6 +72,7 @@ void serror(const char *msg)
     exit(1);
 }
 
+// Cek username + password
 int checklogin_client(Client_List* l, char user[MAX_USERNAME], char pass[MAX_PASSWORD]){
     if(strcmp(l->first->username,user)==0){
         return 1;
@@ -83,6 +89,7 @@ int checklogin_client(Client_List* l, char user[MAX_USERNAME], char pass[MAX_PAS
     return 0;
 }
 
+// signup client
 void signup_client(Client_List* l, char user[MAX_USERNAME], char pass[MAX_PASSWORD]){
     Client *temp = (Client*)malloc(sizeof(Client));
     strcpy(temp->username,user);
@@ -102,6 +109,7 @@ void signup_client(Client_List* l, char user[MAX_USERNAME], char pass[MAX_PASSWO
     }
 }
 
+// Menambah list klien aktif
 void add_active_client(Active_Client_List *l, int newsock, int session, char IP[INET_ADDRSTRLEN], char username[MAX_USERNAME]){
     Active_Client *temp = (Active_Client*)malloc(sizeof(Active_Client));
     strcpy(temp->client_IP,IP);
@@ -123,6 +131,7 @@ void add_active_client(Active_Client_List *l, int newsock, int session, char IP[
     }
 }
 
+// meng-set client offline
 int set_offline_client(Client_List *l, char username[INET_ADDRSTRLEN]){
     Client *iter = l->first;
     while(iter!=NULL){
@@ -140,6 +149,7 @@ int set_offline_client(Client_List *l, char username[INET_ADDRSTRLEN]){
     return 0;
 }
 
+// Menghapus klien yang sedang aktif
 void delete_active_client(Active_Client_List *l, char username[INET_ADDRSTRLEN]){
     Active_Client *iter = l->first;
     while(iter->next!=NULL){
@@ -161,7 +171,7 @@ void delete_active_client(Active_Client_List *l, char username[INET_ADDRSTRLEN])
     }
 }
 
-//Belum bisa dipakai
+//menghapus client
 void delete_client(Client_List* l, char user[MAX_USERNAME]){
     Client *iter = l->first;
     while(iter->next!=NULL){
@@ -181,8 +191,10 @@ void delete_client(Client_List* l, char user[MAX_USERNAME]){
     }
 }
 
+// fungsi thread (diimplementasi di bawah)
 void *client_thread_func(void *arg);
 
+// fungsi main
 int main()
 {
      int sockfd, newsockfd, portno, *newsock;
@@ -265,6 +277,7 @@ int main()
      return 0;
 }
 
+// Implementasi body fungsi thread
 void *client_thread_func(void *arg){
     char buffer[1030];
 
