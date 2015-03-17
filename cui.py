@@ -16,25 +16,49 @@ BUFF=1024
 
 #Label paling kiri
 Label(root, text='Status:' ).grid(row=1,column=0)
-Label(root, text='Server IP:' ).grid(row=2,column=0)
-Label(root, text='Port:' ).grid(row=3,column=0)
-Label(root, text='Username:' ).grid(row=4,column=0)
-
+Label(root, text='Username:' ).grid(row=2,column=0)
+Label(root, text='Password:' ).grid(row=3,column=0)
 #entry pertama untuk konek
-IP = Entry(root)
-IP.grid(row=1,column=1)
-port = Entry(root)
-port.grid(row=2,column=1)
-Nama = Entry(root)
-Nama.grid(row=3,column=1)
+Status = Entry(root)
+Status.grid(row=1,column=1)
+username = Entry(root)
+username.grid(row=2,column=1)
+password = Entry(root)
+password.grid(row=3,column=1)
+
+ipaddress = 'localhost'
+port = 9998
+server_address = (ipaddress, int(port))
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect(server_address)
+size = 1024
+req = client_socket.recv(BUFF)
+print req
+
+def register(u, p):
+    data = "REQ:REGISTER:"+u+":"+p+":!>"
+    print data
+    client_socket.send(data)
+    req = client_socket.recv(BUFF)
+    #resp = 
+
+def login(u, p):
+    data = "REQ:LOGIN:"+u+":"+p+":!>"
+    print data
+    client_socket.send(data)
+    req = client_socket.recv(BUFF)
+    print req
 
 #login
-loginButton = Button(root, text ="Connect", command = lambda: login(entry1.get())).grid(row=5,column=1)
+loginButton = Button(root, text ="Login", command = lambda: login(username.get(),password.get())).grid(row=5,column=1)
+registerButton = Button(root, text ="Daftar", command = lambda: register(username.get(),password.get())).grid(row=6,column=1)
+
+
 
 #textarea
 scroll = Scrollbar(root)
 scroll.grid(row=0,column=5,rowspan=11)
-text = Text(root,width=45,height=20, yscrollcommand=scroll.set)
+text = Text(root,width=45,height=20)
 text.grid(row=1,column=2,rowspan=21,columnspan=4)
 scroll.config(command=text.yview)
 text.config(yscrollcommand=scroll.set,state=DISABLED)
@@ -70,13 +94,11 @@ STATUS = '0' # 1 = dia aktif , 2 = -, 3 = dia di room
 namaRoom = ''
 sess = ''
 
-ipaddress = 'localhost'
-port = 9999
 
-server_address = (ipaddress, int(port))
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect(server_address)
-size = 1024
+
+
+	
+	
 
 def typehandler():
     global STATUS
@@ -85,40 +107,7 @@ def typehandler():
     global namaRoom
     global sess
     req = sys.stdin.readline()
-    tmp = req.split()
-    if tmp[0] == 'login':
-        if checkSyntax(tmp[0], tmp):
-                data = json.dumps({"REQ":tmp[0],"MESSAGE":"REQ_LOGIN", "DATA" : { "SESSION_KEY":"","CONTENT": tmp[1]+":"+tmp[2], "TYPE":"AUTH"}})
-                client_socket.send(data)
-    elif tmp[0] == 'register':
-        if checkSyntax(tmp[0], tmp):
-                data = json.dumps({"REQ":tmp[0], "MESSAGE":"REQ_REGISTER", "DATA" : {"SESSION_KEY":" ","CONTENT": tmp[1]+":"+tmp[2], "TYPE":"AUTH"}})
-                client_socket.send(data)
-    elif tmp[0] == 'logout':
-        if checkSyntax(tmp[0], tmp):
-                data = json.dumps({"REQ":tmp[0], "MESSAGE":"REQ_LOGOUT",'DATA':{"SESSION_KEY": sess,"CONTENT":" ", "TYPE":"NULL"}})
-                client_socket.send(data)
-    elif tmp[0] == 'create':
-        if checkSyntax(tmp[0], tmp):
-                data = json.dumps({"REQ":tmp[0], "MESSAGE":"REQ_CREATE", "DATA":{"SESSION_KEY":sess, "CONTENT":tmp[1]+":"+tmp[2], "TYPE":"AUTH"}})
-                client_socket.send(data)
-    elif tmp[0] == 'list_room':
-        if checkSyntax(tmp[0], tmp):
-                data = json.dumps({"REQ":tmp[0], "MESSAGE":"REQ_LIST_ROOM", "DATA":{"SESSION_KEY":sess, "CONTENT":'', "TYPE":"NULL"}})
-                client_socket.send(data)
-    elif tmp[0] == 'join':
-        if checkSyntax(tmp[0], tmp):
-                data = json.dumps({"REQ":tmp[0], "MESSAGE":"REQ_JOIN", "DATA":{"SESSION_KEY":sess, "CONTENT":tmp[1]+":"+tmp[2], "TYPE":"AUTH"}})
-                client_socket.send(data)
-        elif STATUS == '3':
-                if tmp[0] == 'leave':
-                    data = json.dumps({"REQ":'leave', "MESSAGE":"LEAVE_CHAT", "DATA":{"SESSION_KEY":sess, "CONTENT":req, "TYPE":"TEXT"}})
-                    STATUS = '1'
-        else:
-            data = json.dumps({"REQ":'chat', "MESSAGE":"IN_CHAT", "DATA":{"SESSION_KEY":sess, "CONTENT":req, "TYPE":"TEXT"}})
-            client_socket.send(data)
-    else:
-        print '#Protokol Anda Salah\n'# ketik HELP untuk informasi lebih lengkap\n'
+    client_socket.send(data)
 
 def dashboard() :
     global STATUS
@@ -147,38 +136,8 @@ def recvhandler(sock):
         global namaRoom
         global sess
         req = sock.recv(BUFF)
-        response = json.loads(req)
-        if response ["MESSAGE"] == "IN_CHAT":
-            print response["DATA"]["CONTENT"]
-        else:
-            os.system('cls' if os.name == 'nt' else 'clear')
-            if response["MESSAGE"] == "LOGIN_FAILED" or response["MESSAGE"] == "REGISTER_FAILED" or response["MESSAGE"] == "LOGOUT_SUCCESS":
-                STATUS = '0'
-                sess = ''
-            elif response["MESSAGE"] == "LOGIN_PERMIT":
-                STATUS = '1'
-                sess = response["DATA"]["SESSION_KEY"]
-            elif response["MESSAGE"] == "REGISTER_PERMIT":
-                STATUS = '0'
-            elif response["MESSAGE"] == "CREATE_SUCCESS":
-                sess = response["DATA"]["SESSION_KEY"]
-                STATUS = '3'
-            elif response["MESSAGE"] == "CREATE_FAILED" or response["MESSAGE"] == "JOIN_FAILED": 
-                STATUS = '2'
-            elif response["MESSAGE"] == "JOIN_SUCCESS":
-                sess = response["DATA"]["SESSION_KEY"]
-                STATUS = '3'
-            elif response["MESSAGE"] == "LEAVE_SUCCESS":
-                STATUS = '1'
-            if response["MESSAGE"] == "LIST_ROOM":
-                dashboard()
-                for i in range(len(response['DATA']['CONTENT'])):
-                    print response['DATA']['CONTENT'][i]
-                print 'Selesai'
-                print '======================================'
-            else:
-                dashboard()
-                print message[response["MESSAGE"]]
+        print req
+        return
 
 message = { "CONNECT_OK" : "*Koneksi berhasil!*",
             "LOGIN_PERMIT" : "*Login Berhasil!*",
@@ -212,19 +171,24 @@ def checkSyntax(types, tmp):
     print '#Terjadi kesalahan syntax\n'# ketik HELP untuk informasi lebih lanjut\n'
     return False
 
+def task():
+    global client_socket
+    
+    #socket_list = [sys.stdin, client_socket]
+       # Get the list sockets which are readable
+    #ready_to_read, ready_to_write, in_error = select.select(socket_list , [], [])
+    #for sock in ready_to_read: 
+    #    if sock == client_socket: #recei
+    #        recvhandler(sock)
+    root.after(2000,task)  # reschedule event in 2 seconds
+    
+    
 try:
-    while True:
-        socket = [client_socket]
-        recvhandler(client_socket)
-        msg = sys.stdin.readline()
-            #sys.stdout.flush()   
-            #sys.stdout.write('>> ') 
-            #typehandler()
-    #thread.start_new_thread(recvhandler, ())
-    #thread.start_new_thread(typehandler, ())
+    root.after(2000,task)
+    root.mainloop()
     
 except KeyboardInterrupt:
         client_socket.close()
         sys.exit(0)            
 
-root.mainloop()
+
