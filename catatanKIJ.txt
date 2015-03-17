@@ -1,0 +1,6 @@
+Menggunakan:
+- Distribusi key: KDC
+- Private key dikirim ke server
+- Server mengirim session key untuk kedua client dengan masing-masing private key
+- AES-256 CTR dengan setiap client memiliki counter sama dengan key yaitu session key dari untuk kedua client
+- Dekripsi juga menggunakan kedua key
