@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <limits.h>
+#include <stdint.h>
 
 #define MAX_BUFFER 1024
 #define MAX_USERNAME 128
@@ -58,6 +59,26 @@ typedef struct Thread_Arg{
     Active_Client_List ac_client;
     Client_List c_client;
 } Thread_Arg;
+
+char* hash_func(char message[]){
+	/*Hash function body*/
+}
+
+char* hash_MAC(char K[], char message[]){
+	/*Might be HMAC function here*/
+}
+
+char* encrypt(char Key[], char message[]){
+	
+}
+
+char* decrypt(char Key[], char message[]){
+	
+}
+
+void Diffie_Hellman(){
+	/*later discussed*/
+}
 
 void error(const char *msg)
 {
