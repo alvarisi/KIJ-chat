@@ -19,6 +19,7 @@
 #define MAX_LAST_NAME 128
 #define MAX_QUOTE 768
 #define MAX_THREAD 1024
+#define MAX_KEY 4096
 
 int total_active_client = 0;
 int total_client = 2;
@@ -43,6 +44,7 @@ typedef struct Active_Client{
     int active_sock, active_session;
     char client_IP[INET_ADDRSTRLEN];
     char username[MAX_USERNAME];
+    char public_key[MAX_KEY];
     struct Active_Client* next;
 } Active_Client;
 
@@ -55,26 +57,11 @@ typedef struct Thread_Arg{
     int receiver_sock;
     char receiver_IP[INET_ADDRSTRLEN];
     char username[MAX_USERNAME];
+    char public_key[MAX_KEY];
     int session;
     Active_Client_List ac_client;
     Client_List c_client;
 } Thread_Arg;
-
-char* hash_func(char message[]){
-	/*Hash function body*/
-}
-
-char* hash_MAC(char K[], char message[]){
-	/*Might be HMAC function here*/
-}
-
-char* encrypt(char Key[], char message[]){
-	
-}
-
-char* decrypt(char Key[], char message[]){
-	
-}
 
 void Diffie_Hellman(){
 	/*later discussed*/
@@ -131,10 +118,11 @@ void signup_client(Client_List* l, char user[MAX_USERNAME], char pass[MAX_PASSWO
 }
 
 // Menambah list klien aktif
-void add_active_client(Active_Client_List *l, int newsock, int session, char IP[INET_ADDRSTRLEN], char username[MAX_USERNAME]){
+void add_active_client(Active_Client_List *l, int newsock, int session, char IP[INET_ADDRSTRLEN], char username[MAX_USERNAME], char key[MAX_KEY]){
     Active_Client *temp = (Active_Client*)malloc(sizeof(Active_Client));
     strcpy(temp->client_IP,IP);
     strcpy(temp->username,username);
+    strcpy(temp->public_key,key);
     temp->active_sock = newsock;
     temp->active_session = session;
 
