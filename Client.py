@@ -135,7 +135,7 @@ message = { "CONNECT_OK" : "*Koneksi berhasil!*",
 
 try:
 	while 1:
-		socket_list = [sys.stdin, client_socket]
+		socket_list = [socket.socket(), client_socket]
 		# Get the list sockets which are readable
 		ready_to_read, ready_to_write, in_error = select.select(socket_list , [], [])
 		for sock in ready_to_read: 

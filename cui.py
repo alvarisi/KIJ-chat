@@ -1,7 +1,6 @@
 from Tkinter import *
 import tkMessageBox
 import socket
-import select
 import sys
 import json
 import time
@@ -27,7 +26,7 @@ password = Entry(root)
 password.grid(row=3,column=1)
 
 ipaddress = 'localhost'
-port = 9998
+port = 9999
 server_address = (ipaddress, int(port))
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect(server_address)
@@ -52,8 +51,6 @@ def login(u, p):
 #login
 loginButton = Button(root, text ="Login", command = lambda: login(username.get(),password.get())).grid(row=5,column=1)
 registerButton = Button(root, text ="Daftar", command = lambda: register(username.get(),password.get())).grid(row=6,column=1)
-
-
 
 #textarea
 scroll = Scrollbar(root)
@@ -93,12 +90,6 @@ IDtujuan = ''
 STATUS = '0' # 1 = dia aktif , 2 = -, 3 = dia di room 
 namaRoom = ''
 sess = ''
-
-
-
-
-	
-	
 
 def typehandler():
     global STATUS
@@ -180,6 +171,7 @@ def task():
     #for sock in ready_to_read: 
     #    if sock == client_socket: #recei
     #        recvhandler(sock)
+    print "aaa"
     root.after(2000,task)  # reschedule event in 2 seconds
     
     

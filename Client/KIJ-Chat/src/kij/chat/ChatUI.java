@@ -6,6 +6,7 @@
 package kij.chat;
 
 import java.awt.Component;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -19,6 +20,7 @@ import javax.swing.ScrollPaneConstants;
 public class ChatUI extends javax.swing.JFrame {
 
     private static ClientSocket UiChatting;
+    public static String username;
 
     /**
      * Creates new form ChatUI
@@ -26,6 +28,7 @@ public class ChatUI extends javax.swing.JFrame {
     public ChatUI() {
 
         initComponents();
+        socketConnect();
         BuildLoginWindow();
     }
 
@@ -44,12 +47,13 @@ public class ChatUI extends javax.swing.JFrame {
         L_loggedInAs = new javax.swing.JLabel();
         L_header = new javax.swing.JLabel();
         TF_message = new javax.swing.JTextField();
-        JP_online = new javax.swing.JScrollPane();
-        JL_online = new javax.swing.JList();
         JP_conversation = new javax.swing.JScrollPane();
         TA_conversation = new javax.swing.JTextArea();
         JP_header = new javax.swing.JScrollPane();
         TA_header = new javax.swing.JTextArea();
+        L_uname = new javax.swing.JLabel();
+        C_list_online = new javax.swing.JComboBox();
+        B_logout = new javax.swing.JButton();
         LoginWindow = new javax.swing.JFrame();
         P_login = new javax.swing.JPanel();
         L_username = new javax.swing.JLabel();
@@ -57,9 +61,10 @@ public class ChatUI extends javax.swing.JFrame {
         TF_username = new javax.swing.JTextField();
         TF_password = new javax.swing.JPasswordField();
         B_login = new javax.swing.JButton();
-        jButton3 = new javax.swing.JButton();
+        B_register = new javax.swing.JButton();
+        L_notiflogin = new javax.swing.JLabel();
 
-        B_send.setText("Kirim");
+        B_send.setText("Send");
         B_send.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 B_sendActionPerformed(evt);
@@ -72,13 +77,6 @@ public class ChatUI extends javax.swing.JFrame {
 
         TF_message.setToolTipText("Type a message");
 
-        JL_online.setModel(new javax.swing.AbstractListModel() {
-            String[] strings = { "Item 1", "Item 2", "Item 3", "Item 4", "Item 5" };
-            public int getSize() { return strings.length; }
-            public Object getElementAt(int i) { return strings[i]; }
-        });
-        JP_online.setViewportView(JL_online);
-
         TA_conversation.setColumns(20);
         TA_conversation.setRows(5);
         JP_conversation.setViewportView(TA_conversation);
@@ -87,26 +85,38 @@ public class ChatUI extends javax.swing.JFrame {
         TA_header.setRows(5);
         JP_header.setViewportView(TA_header);
 
+        C_list_online.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        B_logout.setText("Logout");
+        B_logout.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                B_logoutActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout P_mainwindowLayout = new javax.swing.GroupLayout(P_mainwindow);
         P_mainwindow.setLayout(P_mainwindowLayout);
         P_mainwindowLayout.setHorizontalGroup(
             P_mainwindowLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(P_mainwindowLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(P_mainwindowLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(JP_header)
-                    .addGroup(P_mainwindowLayout.createSequentialGroup()
-                        .addComponent(JP_conversation)
-                        .addGap(18, 18, 18)
-                        .addComponent(JP_online, javax.swing.GroupLayout.PREFERRED_SIZE, 142, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(P_mainwindowLayout.createSequentialGroup()
+                .addGroup(P_mainwindowLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(JP_header, javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(JP_conversation, javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, P_mainwindowLayout.createSequentialGroup()
                         .addGroup(P_mainwindowLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(L_header)
                             .addGroup(P_mainwindowLayout.createSequentialGroup()
-                                .addComponent(TF_message, javax.swing.GroupLayout.PREFERRED_SIZE, 490, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(TF_message, javax.swing.GroupLayout.PREFERRED_SIZE, 399, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(B_send, javax.swing.GroupLayout.PREFERRED_SIZE, 58, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGap(0, 85, Short.MAX_VALUE)))
+                                .addComponent(C_list_online, javax.swing.GroupLayout.PREFERRED_SIZE, 142, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGap(18, 18, 18)
+                        .addComponent(B_send, javax.swing.GroupLayout.DEFAULT_SIZE, 78, Short.MAX_VALUE))
+                    .addGroup(P_mainwindowLayout.createSequentialGroup()
+                        .addGap(87, 87, 87)
+                        .addComponent(L_uname, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(B_logout, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
             .addGroup(P_mainwindowLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(P_mainwindowLayout.createSequentialGroup()
@@ -117,14 +127,17 @@ public class ChatUI extends javax.swing.JFrame {
         P_mainwindowLayout.setVerticalGroup(
             P_mainwindowLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, P_mainwindowLayout.createSequentialGroup()
-                .addGap(39, 39, 39)
+                .addContainerGap()
                 .addGroup(P_mainwindowLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(JP_online, javax.swing.GroupLayout.PREFERRED_SIZE, 210, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(JP_conversation))
+                    .addComponent(L_uname, javax.swing.GroupLayout.PREFERRED_SIZE, 13, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(B_logout, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(P_mainwindowLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(TF_message, javax.swing.GroupLayout.PREFERRED_SIZE, 29, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(B_send))
+                .addComponent(JP_conversation, javax.swing.GroupLayout.DEFAULT_SIZE, 212, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(P_mainwindowLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(TF_message, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 28, Short.MAX_VALUE)
+                    .addComponent(C_list_online)
+                    .addComponent(B_send, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(L_header)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
@@ -181,7 +194,12 @@ public class ChatUI extends javax.swing.JFrame {
             }
         });
 
-        jButton3.setText("Daftar");
+        B_register.setText("Daftar");
+        B_register.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                B_registerActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout P_loginLayout = new javax.swing.GroupLayout(P_login);
         P_login.setLayout(P_loginLayout);
@@ -197,18 +215,21 @@ public class ChatUI extends javax.swing.JFrame {
                     .addGroup(P_loginLayout.createSequentialGroup()
                         .addComponent(B_login)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jButton3)
+                        .addComponent(B_register)
                         .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .addGroup(P_loginLayout.createSequentialGroup()
-                        .addGroup(P_loginLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(TF_password, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(TF_username))
-                        .addContainerGap(24, Short.MAX_VALUE))))
+                        .addGroup(P_loginLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(L_notiflogin, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(TF_password, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 166, Short.MAX_VALUE)
+                            .addComponent(TF_username, javax.swing.GroupLayout.Alignment.LEADING))
+                        .addGap(24, 24, 24))))
         );
         P_loginLayout.setVerticalGroup(
             P_loginLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(P_loginLayout.createSequentialGroup()
-                .addGap(26, 26, 26)
+                .addContainerGap()
+                .addComponent(L_notiflogin, javax.swing.GroupLayout.PREFERRED_SIZE, 21, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(P_loginLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(L_username)
                     .addComponent(TF_username, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -219,7 +240,7 @@ public class ChatUI extends javax.swing.JFrame {
                 .addGap(18, 18, 18)
                 .addGroup(P_loginLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(B_login)
-                    .addComponent(jButton3))
+                    .addComponent(B_register))
                 .addContainerGap(43, Short.MAX_VALUE))
         );
 
@@ -235,7 +256,7 @@ public class ChatUI extends javax.swing.JFrame {
         LoginWindowLayout.setVerticalGroup(
             LoginWindowLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, LoginWindowLayout.createSequentialGroup()
-                .addContainerGap(63, Short.MAX_VALUE)
+                .addContainerGap(51, Short.MAX_VALUE)
                 .addComponent(P_login, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(61, 61, 61))
         );
@@ -269,19 +290,10 @@ public class ChatUI extends javax.swing.JFrame {
         // TODO add your handling code here:
         if (!TF_username.getText().equals("") && !TF_password.getText().equals("")) {
             try {
-                String hostname = "localhost";
-                int port = 9999;
                 String username = TF_username.getText().trim();
                 String password = TF_password.getText().trim();
-
-                UiChatting = new ClientSocket(hostname, port);
-                UiChatting.out = new PrintWriter(UiChatting.sock.getOutputStream());
-                
-                UiChatting.out.println("REQ:LOGIN:" + username + ":" + password + ":!>");
-                UiChatting.out.flush();
-                Thread X = new Thread(UiChatting);
-                X.start();
-
+                String req = "REQ:LOGIN:" + username + ":" + password + ":!>";
+                sendReq(req);
             } catch (Exception ex) {
                 Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -294,7 +306,40 @@ public class ChatUI extends javax.swing.JFrame {
 
     private void B_sendActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_B_sendActionPerformed
         // TODO add your handling code here:
+        if(!TF_message.getText().equals("") && !C_list_online.getSelectedItem().toString().equals(""))
+        {
+            String tujuan = C_list_online.getSelectedItem().toString().trim();
+            String message = TF_message.getText();
+            String req = "REQ:CHAT:" + username + ":"+ tujuan + ":" + message + "SESSION:" + UiChatting.Sess_key + ":!>";
+            sendReq(req);
+            
+            TA_conversation.append(username + ": " + message);
+        }
     }//GEN-LAST:event_B_sendActionPerformed
+
+    private void B_registerActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_B_registerActionPerformed
+        // TODO add your handling code here:
+        if (!TF_username.getText().equals("") && !TF_password.getText().equals("")) {
+            try {
+                
+                String username = TF_username.getText().trim();
+                String password = TF_password.getText().trim();
+                String req = "REQ:REGISTER:" + username + ":" + password + ":!>";
+                sendReq(req);
+            } catch (Exception ex) {
+                Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }//GEN-LAST:event_B_registerActionPerformed
+
+    private void B_logoutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_B_logoutActionPerformed
+        // TODO add your handling code here:
+        String req = "REQ:LOGOUT:" + username + ":SESSION:" + UiChatting.Sess_key + ":!>";
+        sendReq(req);
+        username = "";
+        UiChatting.Sess_key = "";
+        BuildLoginWindow();
+    }//GEN-LAST:event_B_logoutActionPerformed
 
     /**
      * @param args the command line arguments
@@ -333,28 +378,31 @@ public class ChatUI extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton B_login;
+    private static javax.swing.JButton B_logout;
+    private javax.swing.JButton B_register;
     private static javax.swing.JButton B_send;
-    private static javax.swing.JList JL_online;
+    public static javax.swing.JComboBox C_list_online;
     private static javax.swing.JScrollPane JP_conversation;
     private static javax.swing.JScrollPane JP_header;
-    private static javax.swing.JScrollPane JP_online;
     private static javax.swing.JLabel L_header;
     private static javax.swing.JLabel L_loggedInAs;
+    public static javax.swing.JLabel L_notiflogin;
     private javax.swing.JLabel L_password;
+    private static javax.swing.JLabel L_uname;
     private javax.swing.JLabel L_username;
     public static javax.swing.JFrame LoginWindow;
     public static javax.swing.JFrame MainWindow;
     private javax.swing.JPanel P_login;
     private static javax.swing.JPanel P_mainwindow;
-    private static javax.swing.JTextArea TA_conversation;
-    private static javax.swing.JTextArea TA_header;
+    public static javax.swing.JTextArea TA_conversation;
+    public static javax.swing.JTextArea TA_header;
     private static javax.swing.JTextField TF_message;
     private javax.swing.JPasswordField TF_password;
     private javax.swing.JTextField TF_username;
-    private javax.swing.JButton jButton3;
     // End of variables declaration//GEN-END:variables
 
     private void BuildLoginWindow() {
+        MainWindow.setVisible(false);
         LoginWindow.setTitle("Login Form");
         LoginWindow.setSize(400, 400);
         LoginWindow.setLocation(250, 200);
@@ -409,8 +457,36 @@ public class ChatUI extends javax.swing.JFrame {
         JP_header.setViewportView(TA_header);
         P_mainwindow.add(JP_header);
         
+        L_uname.setText(username);
+        P_mainwindow.add(L_uname);
+        
+        P_mainwindow.add(B_logout);
         
         MainWindow.getContentPane().add(P_mainwindow);
         MainWindow.setVisible(true);
+    }
+
+    private void socketConnect(){
+        String hostname = "10.151.38.250";
+        int port = 9999;
+        try {
+            UiChatting = new ClientSocket(hostname, port);
+            UiChatting.out = new PrintWriter(UiChatting.sock.getOutputStream());
+            Thread X = new Thread(UiChatting);
+            X.start();
+        } catch (IOException ex) {
+            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+        }        
+    }
+    
+    private void sendReq(String req)
+    {
+        //Encryt should be here
+        UiChatting.out.println(req);
+        UiChatting.out.flush();
+        printHeader(req);
+    }
+    private void printHeader(String req){
+        TA_header.append(req);
     }
 }
