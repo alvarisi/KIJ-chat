@@ -535,7 +535,7 @@ void *client_thread_func(void *arg){
     int q_Skey = numbers[0], alpha_Skey = numbers[1];
     */
 
-    // Primitive root
+    // Siapapun, fungsi ini gak berlaku di C, jadi bikin manual nanti :)
     PrimitiveRoot primitiveRoot[100];
 	//primitiveRoot = Primitive_Root_t(n,root)
 	primitiveRoot[0].n = 3;
