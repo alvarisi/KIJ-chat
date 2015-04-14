@@ -60,7 +60,7 @@ typedef struct Thread_Arg{
     int receiver_sock;
     char receiver_IP[INET_ADDRSTRLEN];
     char username[MAX_USERNAME];
-    char public_key[MAX_KEY];
+    int q, alpha;
     Active_Client_List ac_client;
     Client_List c_client;
 } Thread_Arg;
@@ -97,6 +97,37 @@ int* Stream_Key(char key[], int keylen, int msglen){
 	return stream;
 }
 
+char* Stream_Key_to_Hex(char key[], int keylen, char msg[]){
+	int S[256];
+	char *charstream;
+	charstream = (char*)malloc(512);
+	int i;
+	for(i=0; i<256; i++){
+		S[i] = i;
+	}
+	int j=0;
+	for(i=0; i<256; i++){
+		j = (j+S[i]+(key[i%keylen]-'0'))%256;
+		int temp = S[i];
+		S[i] = S[j];
+		S[j] = temp;
+	}
+	j = 0;
+	i=0;
+	int n=0;
+	while(n<strlen(msg)){
+		i = (i+1)%256;
+		j = (j+S[i])%256;
+		int temp = S[i];
+		S[i] = S[j];
+		S[j] = temp;
+		int K = S[(S[i]+S[j])%256];
+		sprintf(&res[n],"%02x",K);
+		n+=strlen(&res[n]);
+	}
+	return res;
+}
+
 char* Int_To_Hex(int numbers[], int msglen){
 	char* res;
 	res = (char*)malloc(512);
@@ -120,6 +151,20 @@ char* String_To_Hex(char text[]){
 		sprintf(res+i*2, "%02X", text[i]);
 	}
 	return res;
+}
+
+int Hex_to_Int(char c){
+    int first = c / 16 - 3;
+    int second = c % 16;
+    int result = first*10 + second;
+    if(result > 9) result--;
+    return result;
+}
+
+int Hex_to_Ascii(char c, char d){
+    int high = Hex_to_Int(c) * 16;
+    int low = Hex_to_Int(d);
+    return high+low;
 }
 
 static inline unsigned int value(char c){
@@ -378,166 +423,11 @@ int Miller_Rabin_Test(int n){
     return 0;
 }
 
-/*
 int* random_q_alpha(){
     int* numbers = 0;
     numbers = (int*)malloc(sizeof(int)*16);
 
-    Primitive_Root_t primitiveRoot[100];
-	//primitiveRoot = Primitive_Root_t(n,root)
-	primitiveRoot[0] = Primitive_Root_t(3,2);
-	primitiveRoot[1] = Primitive_Root_t(5,2);
-	primitiveRoot[2] = Primitive_Root_t(7,3);
-	primitiveRoot[3] = Primitive_Root_t(9,2);
-	primitiveRoot[4] = Primitive_Root_t(11,2);
-	primitiveRoot[5] = Primitive_Root_t(13,6);
-	primitiveRoot[6] = Primitive_Root_t(16,5);
-	primitiveRoot[7] = Primitive_Root_t(17,10);
-	primitiveRoot[8] = Primitive_Root_t(19,10);
-	primitiveRoot[9] = Primitive_Root_t(23,10);
-	primitiveRoot[10] = Primitive_Root_t(25,2);
-	primitiveRoot[11] = Primitive_Root_t(27,2);
-	primitiveRoot[12] = Primitive_Root_t(29,10);
-	primitiveRoot[13] = Primitive_Root_t(31,17);
-	primitiveRoot[14] = Primitive_Root_t(32,5);
-	primitiveRoot[15] = Primitive_Root_t(37,5);
-	primitiveRoot[16] = Primitive_Root_t(41,6);
-	primitiveRoot[17] = Primitive_Root_t(43,28);
-	primitiveRoot[18] = Primitive_Root_t(47,10);
-	primitiveRoot[19] = Primitive_Root_t(49,10);
-	primitiveRoot[20] = Primitive_Root_t(53,26);
-	primitiveRoot[21] = Primitive_Root_t(59,10);
-	primitiveRoot[22] = Primitive_Root_t(61,10);
-	primitiveRoot[23] = Primitive_Root_t(64,5);
-	primitiveRoot[24] = Primitive_Root_t(67,12);
-	primitiveRoot[25] = Primitive_Root_t(71,62);
-	primitiveRoot[26] = Primitive_Root_t(73,5);
-	primitiveRoot[27] = Primitive_Root_t(79,29);
-	primitiveRoot[28] = Primitive_Root_t(81,11);
-	primitiveRoot[29] = Primitive_Root_t(83,50);
-	primitiveRoot[30] = Primitive_Root_t(89,30);
-	primitiveRoot[31] = Primitive_Root_t(97,10);
-
-    int rq = rand()%32;
-	int random_q = primitiveRoot[rq].n;
-    int result_miller = Miller_Rabin_Test(random_q);
-    while(result_miller!=1){
-        int rq = rand()%32;
-        int random_q = primitiveRoot[rq].n;
-        int result_miller = Miller_Rabin_Test(random_q);
-    }
-    numbers[0] = random_q;
-    numbers[1] = (primitiveRoot[rq]).root;
-    return numbers;
-}*/
-//end
-
-// fungsi thread (diimplementasi di bawah)
-void *client_thread_func(void *arg);
-
-// fungsi main
-int main()
-{
-     int sockfd, newsockfd, portno = 9999, *newsock;
-     pthread_t threads;
-     socklen_t clilen;
-     char buffer[1025];
-
-     Client_List CL;
-     CL.first = NULL;
-     Active_Client_List ACL;
-     ACL.first = NULL;
-
-     signup_client(&CL, "andre", "andre");
-     signup_client(&CL, "test", "test");
-
-     struct sockaddr_in serv_addr, cli_addr;
-     int n;
-
-     printf("Server socket uses IP: '127.0.0.1' with port: %d.\n", portno);
-
-     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-     if (sockfd < 0) error("Server ERROR: on opening socket");
-     puts("Server SUCCESS: socket opened successfully");
-
-     bzero((char *) &serv_addr, sizeof(serv_addr));
-     serv_addr.sin_family = AF_INET;
-     serv_addr.sin_addr.s_addr = INADDR_ANY;
-     serv_addr.sin_port = htons(portno);
-     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) error("Server ERROR: on binding");
-     puts("Server SUCCESS: on binding");
-     listen(sockfd,5);
-
-     puts("Server waiting for a client...");
-
-     while(1){
-        clilen = sizeof(cli_addr);
-        newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &clilen);
-        if (newsockfd < 0){
-            close(newsockfd);
-            close(sockfd);
-            serror("Server ERROR: on accept");
-        }
-        puts("Server SUCCESS: Server accepted");
-
-        srand(time(NULL));
-/*
-        char session[MAX_SESS];
-        int sess = rand()%10000;
-        snprintf(session, MAX_SESS,"%s%d%s","RTR:SESSION:",sess,":!>\n");
-
-        //Kirim session ID dulu
-        write(newsockfd,session,strlen(session));*/
-
-        char IP_str[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &(cli_addr.sin_addr), IP_str, INET_ADDRSTRLEN);
-
-        Thread_Arg TAL;
-        strcpy(TAL.receiver_IP, IP_str);
-        TAL.receiver_sock = newsockfd;
-        TAL.ac_client = ACL;
-        TAL.c_client = CL;
-
-        if(pthread_create(&threads, NULL, client_thread_func, &TAL)){
-            printf("Server ERROR: could not create thread\n");
-        }
-
-        puts("Server SUCCESS: Thread assigned. Clients can communicate freely");
-
-     }
-
-     if(pthread_join(threads, NULL)){
-        printf("Server ERROR: joining threads\n");
-     }
-     else printf("Server SUCCESS: joining threads\n");
-
-     close(newsockfd);
-     close(sockfd);
-     pthread_exit(NULL);
-     printf("Server closed\n");
-     return 0;
-}
-
-// Implementasi body fungsi thread
-void *client_thread_func(void *arg){
-    char buffer[1030];
-
-    Thread_Arg *thread_arg = (Thread_Arg*)arg;
-    // Cek user sebelum login dan sukses/gagal login
-    /*
-    Protocol secara umum untuk pra-chat:
-    Login= "Header:Status_Code:ID:PASSWORD:!>"
-    Fail= "Header:Status_Code!>"
-    Success= "Header:Status_Code:ID:!>"
-    */
-
-    /*int* numbers = random_q_alpha();
-    int q_Skey = numbers[0], alpha_Skey = numbers[1];
-    */
-
-    // Primitive root
     PrimitiveRoot primitiveRoot[100];
-	//primitiveRoot = Primitive_Root_t(n,root)
 	primitiveRoot[0].n = 3;
 	primitiveRoot[0].root = 2;
 	primitiveRoot[1].n = 5;
@@ -613,6 +503,119 @@ void *client_thread_func(void *arg){
     }
 
     int q_Skey = random_q, alpha_Skey = primitiveRoot[rq].root;
+	
+    numbers[0] = random_q;
+    numbers[1] = (primitiveRoot[rq]).root;
+    return numbers;
+}
+//end
+
+// fungsi thread (diimplementasi di bawah)
+void *client_thread_func(void *arg);
+
+// fungsi main
+int main()
+{
+     int sockfd, newsockfd, portno = 9999, *newsock;
+     pthread_t threads;
+     socklen_t clilen;
+     char buffer[1025];
+
+     Client_List CL;
+     CL.first = NULL;
+     Active_Client_List ACL;
+     ACL.first = NULL;
+
+     signup_client(&CL, "andre", "andre");
+     signup_client(&CL, "test", "test");
+
+     struct sockaddr_in serv_addr, cli_addr;
+     int n;
+
+     printf("Server socket uses IP: '127.0.0.1' with port: %d.\n", portno);
+
+     sockfd = socket(AF_INET, SOCK_STREAM, 0);
+     if (sockfd < 0) error("Server ERROR: on opening socket");
+     puts("Server SUCCESS: socket opened successfully");
+
+     bzero((char *) &serv_addr, sizeof(serv_addr));
+     serv_addr.sin_family = AF_INET;
+     serv_addr.sin_addr.s_addr = INADDR_ANY;
+     serv_addr.sin_port = htons(portno);
+     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) error("Server ERROR: on binding");
+     puts("Server SUCCESS: on binding");
+     listen(sockfd,5);
+
+     puts("Server waiting for a client...");
+	
+	 int q = random_q_alpha()[0], alpha = random_q_alpha()[1];
+	 	
+     while(1){
+        clilen = sizeof(cli_addr);
+        newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &clilen);
+        if (newsockfd < 0){
+            close(newsockfd);
+            close(sockfd);
+            serror("Server ERROR: on accept");
+        }
+        puts("Server SUCCESS: Server accepted");
+
+        srand(time(NULL));
+/*
+        char session[MAX_SESS];
+        int sess = rand()%10000;
+        snprintf(session, MAX_SESS,"%s%d%s","RTR:SESSION:",sess,":!>\n");
+
+        //Kirim session ID dulu
+        write(newsockfd,session,strlen(session));*/
+
+        char IP_str[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &(cli_addr.sin_addr), IP_str, INET_ADDRSTRLEN);
+
+        Thread_Arg TAL;
+        strcpy(TAL.receiver_IP, IP_str);
+        TAL.receiver_sock = newsockfd;
+        TAL.ac_client = ACL;
+        TAL.c_client = CL;
+        TAL.q = q;
+        TAL.alpha = alpha;
+
+        if(pthread_create(&threads, NULL, client_thread_func, &TAL)){
+            printf("Server ERROR: could not create thread\n");
+        }
+
+        puts("Server SUCCESS: Thread assigned. Clients can communicate freely");
+
+     }
+
+     if(pthread_join(threads, NULL)){
+        printf("Server ERROR: joining threads\n");
+     }
+     else printf("Server SUCCESS: joining threads\n");
+
+     close(newsockfd);
+     close(sockfd);
+     pthread_exit(NULL);
+     printf("Server closed\n");
+     return 0;
+}
+
+// Implementasi body fungsi thread
+void *client_thread_func(void *arg){
+    char buffer[1030];
+
+    Thread_Arg *thread_arg = (Thread_Arg*)arg;
+    // Cek user sebelum login dan sukses/gagal login
+    /*
+    Protocol secara umum untuk pra-chat:
+    Login= "Header:Status_Code:ID:PASSWORD:!>"
+    Fail= "Header:Status_Code!>"
+    Success= "Header:Status_Code:ID:!>"
+    */
+
+    int q_Skey = (int)thread_arg->q, alpha_Skey = (int)thread_arg->alpha;
+
+    // Primitive root
 
     int XA = (rand()%(q_Skey-1))+1;
     int YA = pow(alpha_Skey,XA);
@@ -637,7 +640,8 @@ void *client_thread_func(void *arg){
             tokens = strtok(NULL,":!>");
             counter += 1;
         }
-
+		
+		//Request public key server
         if(strcmp("REQKEY",token[1])==0){
             char msgsend[1024];
             snprintf(msgsend,sizeof(msgsend),"%s%d%s%d%s","RTR:KEYGEN:",q_Skey,":",YA,":!>\n");
@@ -646,13 +650,15 @@ void *client_thread_func(void *arg){
             }
             printf("Server SUCCESS: on writing to client\n");
         }
-        //REQ:SETKEY:User1:PublicKeyQ:PublicKeyYB!>
+        //Set dictionary for public key of clients: REQ:SETKEY:User1:PublicKeyQ:PublicKeyYB!>
         else if(strcmp("SETKEY",token[1])==0){
             int q_B = atoi(token[3]);
             int YB = atoi(token[4]);
             add_key_client(&(thread_arg->ac_client),token[2],q_B,YB);
             printf("Server SUCCESS: adding public key dictionary\n");
         }
+        //Login client: REQ:LOGIN:User1:Encrypt(Pass,K):!>
+        //Mohon password user dienkripsi (untuk login saja)
         else if(strcmp(token[1],"LOGIN")==0){
             Active_Client_List *list = &(thread_arg->ac_client);
             Active_Client *iter = list->first;
@@ -666,11 +672,21 @@ void *client_thread_func(void *arg){
             K = (int)pow(iter->YB,XA)%q_Skey;
             char key[256];
             sprintf(key,"%d",K);
-            int* newK = Stream_Key(key,strlen(key),strlen(key));
-            char* hexK = Int_To_Hex(newK, strlen(key));
+            char* newK;
+            newK = (char*)malloc(512);
+            strcpy(newK,Stream_Key_to_Hex(key,strlen(key),token[3]));
 
             char pass[512];
-            //sprintf(pass,"%x",Decrypt_Message(hexK,token[3]));
+            int len = strlen(newK), w=0, u;
+            char buf = 0;
+            for(u=0; u<len; u++){
+            	if(u%2!=0){
+            		pass[w] = Hex_to_Ascii(buf,newK[u]) + '0';
+				}
+				else{
+					buf = newK[u];
+				}
+			}
 
             if(checklogin_client(&(thread_arg->c_client), token[2], pass) == 0){
                 char msgserver[1024];
@@ -691,14 +707,25 @@ void *client_thread_func(void *arg){
                 break;
             }
         }
+        // Sementara password untuk register jangan dienkripsi
         else if(strcmp(token[1],"REGISTER")==0){
-            char key[256];
+            /*char key[256];
             sprintf(key,"%d",K);
-            int* newK = Stream_Key(key,strlen(key),strlen(key));
-            char* hexK = Int_To_Hex(newK, strlen(key));
+            char* newK;
+            newK = (char*)malloc(512);
+            strcpy(newK,Stream_Key_to_Hex(key,strlen(key),token[3]));
 
             char pass[512];
-            //sprintf(pass,"%x",Decrypt_Message(hexK,token[3]));
+            int len = strlen(newK), w=0, u;
+            char buf = 0;
+            for(u=0; u<len; u++){
+            	if(u%2!=0){
+            		pass[w] = Hex_to_Ascii(buf,newK[u]) + '0';
+				}
+				else{
+					buf = newK[u];
+				}
+			}*/
 
             signup_client(&(thread_arg->c_client), token[2], pass);
             printf("Server SUCCESS: account %s created\n", token[2]);
@@ -773,6 +800,7 @@ void *client_thread_func(void *arg){
                 }
                 else printf("Server SUCCESS: on writing to client user\n");
             }
+            //protokol = RTR:SUCCESSREQCHAT:User1:User2:Encrypt(session,K):!>
             else{
                 Active_Client_List *list = &(thread_arg->ac_client);
                 Active_Client *iter = list->first;
