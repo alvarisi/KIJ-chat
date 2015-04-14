@@ -20,6 +20,7 @@ import java.util.Scanner;
 public class ClientSocket implements Runnable {
     private static String hostname;
     private static int port;
+    String key;
     Socket sock;
     Scanner input;
     Scanner send = new Scanner(System.in);
@@ -31,6 +32,7 @@ public class ClientSocket implements Runnable {
     {
         hostname = h;
         port = p;
+        key = "SangatRahasiaSekali";
         this.sock = new Socket(ClientSocket.hostname, ClientSocket.port);  
     }
     ClientSocket(Socket X) {
@@ -76,81 +78,25 @@ public class ClientSocket implements Runnable {
         if (input.hasNext()) {
             System.out.print("Receive-In\n");
             //Decrypt Sould be here
+            //Start Decrypt
+            
+            
+            //End Decrypt
+            
             
             String msg = input.nextLine();
-            printHeader(msg);
-            System.out.print(msg);
-            List<String> items;
-            items = Arrays.asList(msg.split(":"));
-            receiveHandler(items);
+            ChatUI.receive(msg);
+//            printHeader(msg);
+//            System.out.print(msg);
+//            List<String> items;
+//            items = Arrays.asList(msg.split(":"));
+//            receiveHandler(items);
         }
     }
-    public void receiveHandler(List<String> items)
-    {
-        System.out.print("Handler-In\n");
-        System.out.print("nilai item" + items.get(0));
-
-        switch(items.get(0))
-        {
-            case "RTR":
-                System.out.print("Handler-RTR\n");
-                if("SUCCESSLOGIN".equals(items.get(1)))
-                {
-                    System.out.print("Handler-SUCCESSLOGIN\n");
-                    ChatUI.username = items.get(2);
-                    ChatUI.BuildMainWindow();
-                    out.println("REQ:LIST:SESSION:"+ Sess_key +":!>");
-                    out.flush();
-                    System.out.print("SentList\n");
-                }
-                else if("SUCCESSLIST".equals(items.get(1)))
-                {
-                    ChatUI.C_list_online.removeAllItems();
-//                    List<String> userActive = new ArrayList<String>();
-                    for(int i=0;i<items.size();i++)
-                    {
-                        if("DATA".equals(items.get(i)))
-                        {
-                            for(int j=i+1;j<items.size();j++)
-                            {
-                                if("!>".equals(items.get(j))==false)
-                                {
-//                                    userActive.add(items.get(j));
-                                    ChatUI.C_list_online.addItem(items.get(j));
-                                }
-                                i++;
-                            }
-                        }
-                    }
-//                    String[] simpleArray = new String[userActive.size()];
-//                    userActive.toArray(simpleArray);
-//                    ChatUI.JL_online.setListData(simpleArray);
-                }
-                else if("SUCCESSREGISTER".equals(items.get(1)))
-                {
-                    System.out.print("Handler-SUCCESSREGISTER\n");
-                    ChatUI.L_notiflogin.setText("Anda telah terdaftar. Silakan login");
-                }
-                else if("RCHAT".equals(items.get(1)))
-                {
-                    String sender = items.get(3);
-                    String message = items.get(4);
-                    printConversation(sender + " : " + message);
-                }
-                break;
-            case "RCV":
-                Sess_key = items.get(2);
-                break;
-            default:
-                break;
-        }
-    }
+    
     public void printHeader(String message)
     {
         ChatUI.TA_header.append(message);
     }
-    public void printConversation(String message)
-    {
-        ChatUI.TA_conversation.append(message);
-    }
+    
 }

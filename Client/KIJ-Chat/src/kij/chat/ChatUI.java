@@ -8,6 +8,9 @@ package kij.chat;
 import java.awt.Component;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JPanel;
@@ -481,12 +484,113 @@ public class ChatUI extends javax.swing.JFrame {
     
     private void sendReq(String req)
     {
-        //Encryt should be here
-        UiChatting.out.println(req);
-        UiChatting.out.flush();
-        printHeader(req);
+        try {
+            //Start Encrypt
+            
+            byte[] key;
+            key = UiChatting.key.getBytes("UTF-8");
+            RC4 rc4 = new RC4(key);
+            byte[] plainbyte = req.getBytes("UTF-8");
+            byte[] chiperbyte = rc4.encrypt(plainbyte);
+            String chipertext = new String(chiperbyte,"UTF-8");
+            req = chipertext;
+            //End Encrypt
+            
+            UiChatting.out.println(req);
+            UiChatting.out.flush();
+            printHeader("REQ : " + req);
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     private void printHeader(String req){
         TA_header.append(req);
+    }
+    public static void receive(String resp)
+    {
+        try {
+            byte[] key;
+            key = UiChatting.key.getBytes("UTF-8");
+            RC4 rc4 = new RC4(key);
+            byte[] chiperbyte = resp.getBytes("UTF-8");
+            byte[] plainbyte = rc4.decrypt(chiperbyte);
+
+            String plaintext = new String(plainbyte,"UTF-8");
+            resp = plaintext;
+
+            System.out.print(resp);
+            List<String> items;
+            items = Arrays.asList(resp.split(":"));
+            receiveHandler(items);
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
+    private static void receiveHandler(List<String> items)
+    {
+        
+        System.out.print("Handler-In\n");
+        System.out.print("nilai item" + items.get(0));
+
+        switch(items.get(0))
+        {
+            case "RTR":
+                System.out.print("Handler-RTR\n");
+                if("SUCCESSLOGIN".equals(items.get(1)))
+                {
+                    System.out.print("Handler-SUCCESSLOGIN\n");
+                    username = items.get(2);
+                    BuildMainWindow();
+                    UiChatting.out.println("REQ:LIST:SESSION:"+ UiChatting.Sess_key +":!>");
+                    UiChatting.out.flush();
+                    System.out.print("SentList\n");
+                }
+                
+                else if("SUCCESSLIST".equals(items.get(1)))
+                {
+                    C_list_online.removeAllItems();
+//                    List<String> userActive = new ArrayList<String>();
+                    for(int i=0;i<items.size();i++)
+                    {
+                        if("DATA".equals(items.get(i)))
+                        {
+                            for(int j=i+1;j<items.size();j++)
+                            {
+                                if("!>".equals(items.get(j))==false)
+                                {
+//                                    userActive.add(items.get(j));
+                                    C_list_online.addItem(items.get(j));
+                                }
+                                i++;
+                            }
+                        }
+                    }
+//                    String[] simpleArray = new String[userActive.size()];
+//                    userActive.toArray(simpleArray);
+//                    ChatUI.JL_online.setListData(simpleArray);
+                }
+                else if("SUCCESSREGISTER".equals(items.get(1)))
+                {
+                    System.out.print("Handler-SUCCESSREGISTER\n");
+                    L_notiflogin.setText("Anda telah terdaftar. Silakan login");
+                }
+                else if("RCHAT".equals(items.get(1)))
+                {
+                    String sender = items.get(3);
+                    String message = items.get(4);
+                    printConversation(sender + " : " + message);
+                }
+                break;
+            case "RCV":
+                UiChatting.Sess_key = items.get(2);
+                break;
+            default:
+                break;
+        }
+    }
+    private static void printConversation(String message)
+    {
+        TA_conversation.append(message);
     }
 }
