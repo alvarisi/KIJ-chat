@@ -8,9 +8,7 @@ package kij.chat;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.Random;
 import java.util.Scanner;
 
 /**
@@ -32,7 +30,7 @@ public class ClientSocket implements Runnable {
     {
         hostname = h;
         port = p;
-        key = "SangatRahasiaSekali";
+        key = generateKeyRandow();
         this.sock = new Socket(ClientSocket.hostname, ClientSocket.port);  
     }
     ClientSocket(Socket X) {
@@ -99,4 +97,16 @@ public class ClientSocket implements Runnable {
         ChatUI.TA_header.append(message);
     }
     
+    private String generateKeyRandow()
+    {
+        char[] chars = "abcdefghijklmnopqrstuvwxyz1234567890".toCharArray();
+        StringBuilder sb = new StringBuilder();
+        Random random = new Random();
+        for (int i = 0; i < 24; i++) {
+            char c = chars[random.nextInt(chars.length)];
+            sb.append(c);
+        }
+        String output = sb.toString();
+        return output;
+    }
 }

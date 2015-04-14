@@ -5,10 +5,10 @@
  */
 package kij.chat;
 
-import java.awt.Component;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
@@ -486,7 +486,6 @@ public class ChatUI extends javax.swing.JFrame {
     {
         try {
             //Start Encrypt
-            
             byte[] key;
             key = UiChatting.key.getBytes("UTF-8");
             RC4 rc4 = new RC4(key);
@@ -495,6 +494,16 @@ public class ChatUI extends javax.swing.JFrame {
             String chipertext = new String(chiperbyte,"UTF-8");
             req = chipertext;
             //End Encrypt
+            
+            // Hashing
+            SHA1 hash = new SHA1();
+            String hashValue;
+            try {
+                hashValue = hash.calcSHA1(req);
+            } catch (NoSuchAlgorithmException ex) {
+                Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            // End Hashing
             
             UiChatting.out.println(req);
             UiChatting.out.flush();
