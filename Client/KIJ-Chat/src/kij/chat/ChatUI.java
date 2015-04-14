@@ -470,7 +470,7 @@ public class ChatUI extends javax.swing.JFrame {
     }
 
     private void socketConnect(){
-        String hostname = "10.151.38.250";
+        String hostname = "localhost";
         int port = 9999;
         try {
             UiChatting = new ClientSocket(hostname, port);
@@ -484,56 +484,59 @@ public class ChatUI extends javax.swing.JFrame {
     
     private void sendReq(String req)
     {
-        try {
+//        try {
             //Start Encrypt
-            byte[] key;
-            key = UiChatting.key.getBytes("UTF-8");
-            RC4 rc4 = new RC4(key);
-            byte[] plainbyte = req.getBytes("UTF-8");
-            byte[] chiperbyte = rc4.encrypt(plainbyte);
-            String chipertext = new String(chiperbyte,"UTF-8");
-            req = chipertext;
+//            byte[] key;
+//            key = UiChatting.key.getBytes("UTF-8");
+//            RC4 rc4 = new RC4(key);
+//            byte[] plainbyte = req.getBytes("UTF-8");
+//            byte[] chiperbyte = rc4.encrypt(plainbyte);
+//            String chipertext = new String(chiperbyte,"UTF-8");
+//            System.out.println(chipertext);
+            // req = chipertext;
             //End Encrypt
             
             // Hashing
-            SHA1 hash = new SHA1();
-            String hashValue;
-            try {
-                hashValue = hash.calcSHA1(req);
-            } catch (NoSuchAlgorithmException ex) {
-                Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
-            }
+//            SHA1 hash = new SHA1();
+//            String hashValue;
+//            try {
+//                hashValue = hash.calcSHA1(req);
+//                System.out.println(hashValue);
+//            } catch (NoSuchAlgorithmException ex) {
+//                Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+//            }
             // End Hashing
-            
+            System.out.println("REQ : " + req);
             UiChatting.out.println(req);
             UiChatting.out.flush();
             printHeader("REQ : " + req);
-        } catch (UnsupportedEncodingException ex) {
-            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
-        }
+//        } catch (UnsupportedEncodingException ex) {
+//            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+//        }
     }
     private void printHeader(String req){
         TA_header.append(req);
     }
     public static void receive(String resp)
     {
-        try {
-            byte[] key;
-            key = UiChatting.key.getBytes("UTF-8");
-            RC4 rc4 = new RC4(key);
-            byte[] chiperbyte = resp.getBytes("UTF-8");
-            byte[] plainbyte = rc4.decrypt(chiperbyte);
-
-            String plaintext = new String(plainbyte,"UTF-8");
-            resp = plaintext;
+//        try {
+//            byte[] key;
+//            key = UiChatting.key.getBytes("UTF-8");
+//            RC4 rc4 = new RC4(key);
+//            byte[] chiperbyte = resp.getBytes("UTF-8");
+//            byte[] plainbyte = rc4.decrypt(chiperbyte);
+//
+//            String plaintext = new String(plainbyte,"UTF-8");
+            
+            //resp = plaintext;
 
             System.out.print(resp);
             List<String> items;
             items = Arrays.asList(resp.split(":"));
             receiveHandler(items);
-        } catch (UnsupportedEncodingException ex) {
-            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
-        }
+//        } catch (UnsupportedEncodingException ex) {
+//            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+//        }
         
     }
     private static void receiveHandler(List<String> items)
@@ -589,6 +592,10 @@ public class ChatUI extends javax.swing.JFrame {
                     String sender = items.get(3);
                     String message = items.get(4);
                     printConversation(sender + " : " + message);
+                }
+                else if("SESSION".equals(items.get(1)))
+                {
+                    UiChatting.Sess_key = items.get(2);
                 }
                 break;
             case "RCV":

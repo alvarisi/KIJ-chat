@@ -229,7 +229,7 @@ int main()
      struct sockaddr_in serv_addr, cli_addr;
      int n;
 
-     srand(time(NULL));
+
 
      printf("Server socket uses IP: '127.0.0.1' with port: %d.\n", portno);
 
@@ -256,10 +256,17 @@ int main()
             serror("Server ERROR: on accept");
         }
         puts("Server SUCCESS: Server accepted");
+	srand(time(NULL));
 
         char session[MAX_SESS];
         int sess = rand()%10000;
-        snprintf(session, MAX_SESS,"%s%d%s","RTR:SESSION:",sess,":!>\n");
+	char sessstring[5];
+	snprintf(sessstring,5,"%d",sess);
+	strcpy(session,"RTR:SESSION:");
+	strcat(session,sessstring);
+	strcat(session,":!>\n");
+
+	puts(session);
 
         //Kirim session ID dulu
         write(newsockfd,session,strlen(session));
