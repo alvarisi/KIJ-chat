@@ -322,7 +322,7 @@ public class ChatUI extends javax.swing.JFrame {
         {
             String tujuan = C_list_online.getSelectedItem().toString().trim();
             String message = TF_message.getText();
-            String req = "REQ:REQCHAT:" + username + ":"+ tujuan + ":"+ UiChatting.public_key + ":!>";
+            String req = "REQ:REQCHAT:" + username + ":"+ tujuan + ":!>";
             sendReq(req);
             String chipermessage = c_encrypt(message,session);
             
@@ -683,7 +683,7 @@ public class ChatUI extends javax.swing.JFrame {
     {
         String ikey = Integer.toString(UiChatting.ikey);
         byte[] akey;
-                
+        System.out.println("Plain (E) : " + plaintext);
         String chipertext = null;
         try {
             
@@ -697,10 +697,13 @@ public class ChatUI extends javax.swing.JFrame {
         } catch (UnsupportedEncodingException ex) {
             Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
         }
+        System.out.println("Chipertext (E) : " + chipertext);
         return chipertext;
     }
     private static String decrypt(String chipertext)
     {
+        System.out.println("Chipertext (D) : " + chipertext);
+        
         String ikey = Integer.toString(UiChatting.ikey);
         byte[] akey;
                 
@@ -717,10 +720,12 @@ public class ChatUI extends javax.swing.JFrame {
         } catch (UnsupportedEncodingException ex) {
             Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
         }
+        System.out.println("Plaintext (D) : " + plaintext);
         return plaintext;
     }
     private static String c_encrypt(String plaintext, String ikey)
     {
+        System.out.println("Plaintext (E client) : " + plaintext);
         
         byte[] akey;
                 
@@ -737,10 +742,12 @@ public class ChatUI extends javax.swing.JFrame {
         } catch (UnsupportedEncodingException ex) {
             Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
         }
+        System.out.println("Chipertext (E client) : " + chipertext);
         return chipertext;
     }
     private static String c_decrypt(String chipertext, String ikey)
     {
+        System.out.println("Chipertext (D client) : " + chipertext);
         byte[] akey;
                 
         String plaintext = null;
@@ -756,6 +763,7 @@ public class ChatUI extends javax.swing.JFrame {
         } catch (UnsupportedEncodingException ex) {
             Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
         }
+        System.out.println("Plaintext (D client) : " + plaintext);
         return plaintext;
     }
 }
