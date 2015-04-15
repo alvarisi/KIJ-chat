@@ -211,7 +211,7 @@ void delete_client(Client_List* l, char user[MAX_USERNAME]){
 void *client_thread_func(void *arg);
 
 // fungsi main
-int main()
+int main(int argc, char *argv[])
 {
      int sockfd, newsockfd, portno = 9999, *newsock;
      pthread_t threads;
@@ -415,11 +415,13 @@ void *client_thread_func(void *arg){
             Active_Client *iter = list->first;
             char* lists;
             while(iter!=NULL){
+		puts(iter->username);
                 snprintf(lists,sizeof(lists),"%s%s",iter->username,":");
                 if(iter->next!=NULL)iter = iter->next;
                 else break;
             }
             snprintf(msgsend,sizeof(msgsend),"%s%s%s%s%s","RTR:SUCCESSLIST:",token[2],":DATA:",lists,"!>\n");
+	    puts(msgsend);
             if(write((thread_arg->receiver_sock),msgsend,sizeof(msgsend)) < 0){
                 printf("Server ERROR: on writing to client\n");
             }

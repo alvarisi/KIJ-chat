@@ -10,7 +10,6 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Random;
 import java.util.Scanner;
-
 /**
  *
  * @author varis
@@ -56,7 +55,6 @@ public class ClientSocket implements Runnable {
                 input = new Scanner(sock.getInputStream());
                 out = new PrintWriter(sock.getOutputStream());
                 out.flush();
-                System.out.print("Run\n");
                 CheckStream();
             } finally {
                 sock.close();
@@ -82,8 +80,11 @@ public class ClientSocket implements Runnable {
             //End Decrypt
             
             
+
             String msg = input.nextLine();
-            ChatUI.receive(msg);
+            System.out.print("\nData Rceive : "+ msg + "\n");
+            ChatUI.receiveHandler(msg);
+            System.out.print("\nEnd.Receive-In\n");
 //            printHeader(msg);
 //            System.out.print(msg);
 //            List<String> items;

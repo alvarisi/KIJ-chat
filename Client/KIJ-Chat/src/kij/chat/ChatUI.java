@@ -15,7 +15,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JPanel;
 import javax.swing.ScrollPaneConstants;
-
+import com.chilkatsoft.*;
 /**
  *
  * @author varis
@@ -477,6 +477,29 @@ public class ChatUI extends javax.swing.JFrame {
             UiChatting.out = new PrintWriter(UiChatting.sock.getOutputStream());
             Thread X = new Thread(UiChatting);
             X.start();
+            
+            // *Req public key
+            CkDh dh = new CkDh();
+            boolean success;
+
+            success = dh.UnlockComponent("Sembarang");
+            if(success != true)
+            {
+                System.out.println(dh.lastErrorText());
+                return;
+            }
+
+            dh.UseKnownPrime(2);
+            String p;
+            int g;
+            p = dh.p();
+            g = dh.get_G();
+            String req;
+            req = "REQ:REQKEY:!>";
+            UiChatting.out.println(req);
+            UiChatting.out.flush();
+            // End Req
+            
         } catch (IOException ex) {
             Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
         }        
@@ -530,25 +553,23 @@ public class ChatUI extends javax.swing.JFrame {
             
             //resp = plaintext;
 
-            System.out.print(resp);
-            List<String> items;
-            items = Arrays.asList(resp.split(":"));
-            receiveHandler(items);
+            
 //        } catch (UnsupportedEncodingException ex) {
 //            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
 //        }
         
     }
-    private static void receiveHandler(List<String> items)
+    public static void receiveHandler(String resp)
     {
+        System.out.print(resp);
+            List<String> items;
+            items = Arrays.asList(resp.split(":"));
         
-        System.out.print("Handler-In\n");
-        System.out.print("nilai item" + items.get(0));
+        System.out.print("nilai item (" + items.get(0) + " )\n");
 
         switch(items.get(0))
         {
             case "RTR":
-                System.out.print("Handler-RTR\n");
                 if("SUCCESSLOGIN".equals(items.get(1)))
                 {
                     System.out.print("Handler-SUCCESSLOGIN\n");
@@ -586,6 +607,10 @@ public class ChatUI extends javax.swing.JFrame {
                 {
                     System.out.print("Handler-SUCCESSREGISTER\n");
                     L_notiflogin.setText("Anda telah terdaftar. Silakan login");
+                    username = items.get(2);
+                    BuildMainWindow();
+                    UiChatting.out.println("REQ:LIST:SESSION:"+ UiChatting.Sess_key +":!>");
+                    UiChatting.out.flush();
                 }
                 else if("RCHAT".equals(items.get(1)))
                 {
@@ -604,9 +629,11 @@ public class ChatUI extends javax.swing.JFrame {
             default:
                 break;
         }
+        return;
     }
     private static void printConversation(String message)
     {
         TA_conversation.append(message);
     }
+    
 }
