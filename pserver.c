@@ -47,7 +47,7 @@ typedef struct Active_Client{
     int active_sock, active_session;
     char client_IP[INET_ADDRSTRLEN];
     char username[MAX_USERNAME];
-    int q, YB;
+    int q;
     struct Active_Client* next;
 } Active_Client;
 
@@ -122,10 +122,10 @@ char* Stream_Key_to_Hex(char key[], int keylen, char msg[]){
 		S[i] = S[j];
 		S[j] = temp;
 		int K = S[(S[i]+S[j])%256];
-		sprintf(&res[n],"%02x",K);
-		n+=strlen(&res[n]);
+		sprintf(&charstream[n],"%02x",K);
+		n+=strlen(&charstream[n]);
 	}
-	return res;
+	return charstream;
 }
 
 char* Int_To_Hex(int numbers[], int msglen){
@@ -275,11 +275,10 @@ void add_active_client(Active_Client_List *l, int newsock, char IP[INET_ADDRSTRL
 }
 
 //Menambahkan public key q dan YB pada client
-void add_key_client(Active_Client_List *l, char username[MAX_USERNAME], int q, int YB){
+void add_key_client(Active_Client_List *l, char username[MAX_USERNAME], int q){
     Active_Client *iter = l->first;
     if(strcmp(l->first->username,username)==0){
         l->first->q = q;
-        l->first->YB = YB;
         return;
     }
     else{
@@ -287,7 +286,6 @@ void add_key_client(Active_Client_List *l, char username[MAX_USERNAME], int q, i
         do{
             if(strcmp(iter->username,username)==0){
                 iter->q = q;
-                iter->YB = YB;
                 return;
             }
             else{
@@ -423,11 +421,20 @@ int Miller_Rabin_Test(int n){
     return 0;
 }
 
+PrimitiveRoot primitiveRoot[100];
+
+int find_n_root(int q){
+    int i;
+    for(i=0;i<32;i++){
+        if(primitiveRoot[i].n==q) return primitiveRoot[i].root;
+    }
+    return q;
+}
+
 int* random_q_alpha(){
     int* numbers = 0;
     numbers = (int*)malloc(sizeof(int)*16);
 
-    PrimitiveRoot primitiveRoot[100];
 	primitiveRoot[0].n = 3;
 	primitiveRoot[0].root = 2;
 	primitiveRoot[1].n = 5;
@@ -503,7 +510,7 @@ int* random_q_alpha(){
     }
 
     int q_Skey = random_q, alpha_Skey = primitiveRoot[rq].root;
-	
+
     numbers[0] = random_q;
     numbers[1] = (primitiveRoot[rq]).root;
     return numbers;
@@ -547,9 +554,9 @@ int main()
      listen(sockfd,5);
 
      puts("Server waiting for a client...");
-	
+
 	 int q = random_q_alpha()[0], alpha = random_q_alpha()[1];
-	 	
+
      while(1){
         clilen = sizeof(cli_addr);
         newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &clilen);
@@ -617,11 +624,9 @@ void *client_thread_func(void *arg){
 
     // Primitive root
 
-    int XA = (rand()%(q_Skey-1))+1;
-    int YA = pow(alpha_Skey,XA);
-    YA = YA%q_Skey;
-
-    int K;
+    int XA_Skey = (rand()%(q_Skey-1))+1;
+    int YA_Skey = pow(alpha_Skey,XA_Skey);
+    YA_Skey = YA_Skey%q_Skey;
 
     while(1){
 
@@ -640,24 +645,24 @@ void *client_thread_func(void *arg){
             tokens = strtok(NULL,":!>");
             counter += 1;
         }
-		
+
 		//Request public key server
+		//RTR:KEYGEN:Server:PublicQ:!>
         if(strcmp("REQKEY",token[1])==0){
             char msgsend[1024];
-            snprintf(msgsend,sizeof(msgsend),"%s%d%s%d%s","RTR:KEYGEN:",q_Skey,":",YA,":!>\n");
+            snprintf(msgsend,sizeof(msgsend),"%s%s%s%d%s","RTR:KEYGEN:","Server",":",q_Skey,":!>\n");
             if(write((thread_arg->receiver_sock),msgsend,sizeof(msgsend)) < 0){
                 printf("Server ERROR: on writing to client\n");
             }
             printf("Server SUCCESS: on writing to client\n");
         }
-        //Set dictionary for public key of clients: REQ:SETKEY:User1:PublicKeyQ:PublicKeyYB!>
+        //Set dictionary for public key of clients: REQ:SETKEY:User1:PublicKeyQ:!>
         else if(strcmp("SETKEY",token[1])==0){
-            int q_B = atoi(token[3]);
-            int YB = atoi(token[4]);
-            add_key_client(&(thread_arg->ac_client),token[2],q_B,YB);
+            int q_C = atoi(token[3]);
+            add_key_client(&(thread_arg->ac_client),token[2],q_C);
             printf("Server SUCCESS: adding public key dictionary\n");
         }
-        //Login client: REQ:LOGIN:User1:Encrypt(Pass,K):!>
+        //Login client: REQ:LOGIN:User1:Encrypt(Pass,K):YC:!>
         //Mohon password user dienkripsi (untuk login saja)
         else if(strcmp(token[1],"LOGIN")==0){
             Active_Client_List *list = &(thread_arg->ac_client);
@@ -669,7 +674,11 @@ void *client_thread_func(void *arg){
                 if(iter->next!=NULL) iter = iter->next;
                 else break;
             }
-            K = (int)pow(iter->YB,XA)%q_Skey;
+            int q = iter->q;
+            int YA = atoi(token[4]);
+            int alpha = find_n_root(q);
+            int XB = rand()%q;
+            int K = (int)pow(YA,XB)%q;
             char key[256];
             sprintf(key,"%d",K);
             char* newK;
@@ -727,7 +736,7 @@ void *client_thread_func(void *arg){
 				}
 			}*/
 
-            signup_client(&(thread_arg->c_client), token[2], pass);
+            signup_client(&(thread_arg->c_client), token[2], token[3]);
             printf("Server SUCCESS: account %s created\n", token[2]);
             char msgsend[1024];
             snprintf(msgsend,sizeof(msgsend),"%s%s%s","RTR:SUCCESSREGISTER:",token[2],":!>\n");
@@ -790,6 +799,7 @@ void *client_thread_func(void *arg){
             }
             else printf("Server SUCCESS: on writing to client\n");
         }
+        //protokol= RTR:REQCHAT:User1:User2:!>
         else if(strcmp(token[1],"REQCHAT")==0){
             int status = check_status_client(&(thread_arg->c_client), token[3]);
             if(status==0){
@@ -800,7 +810,7 @@ void *client_thread_func(void *arg){
                 }
                 else printf("Server SUCCESS: on writing to client user\n");
             }
-            //protokol = RTR:SUCCESSREQCHAT:User1:User2:Encrypt(session,K):!>
+            //protokol = RTR:SUCCESSREQCHAT:User1:User2:Encrypt(session,K):YA:!>
             else{
                 Active_Client_List *list = &(thread_arg->ac_client);
                 Active_Client *iter = list->first;
@@ -811,7 +821,7 @@ void *client_thread_func(void *arg){
                     if(iter->next!=NULL) iter = iter->next;
                     else break;
                 }
-                K = (int)pow(iter->YB,XA)%q_Skey;
+                int K = YA_Skey;
                 char key[256];
                 sprintf(key,"%d",K);
                 char session[MAX_SESS];
@@ -822,7 +832,7 @@ void *client_thread_func(void *arg){
                 char* message = Encrypt_Message(hexK,String_To_Hex(session));
 
                 char msgsend1[1024], msgsend2[1024];
-                snprintf(msgsend1,sizeof(msgsend1),"%s%s%s%s%s%s%s","RTR:SUCCESSREQCHAT:",token[2],":",token[3],":",message,":!>\n");
+                snprintf(msgsend1,sizeof(msgsend1),"%s%s%s%s%s%s%s%d%s","RTR:SUCCESSREQCHAT:",token[2],":",token[3],":",message,":",YA_Skey,":!>\n");
 
                 if(write(thread_arg->receiver_sock,msgsend1,sizeof(msgsend1)) < 0){
                     printf("Server ERROR: on writing to client user 1\n");
@@ -839,14 +849,14 @@ void *client_thread_func(void *arg){
                     if(iter->next!=NULL) iter = iter->next;
                     else break;
                 }
-                K = (int)pow(iter->YB,XA)%q_Skey;
+                K = YA_Skey;
                 char key2[256];
                 sprintf(key2,"%d",K);
                 int* newK2 = Stream_Key(key2, strlen(key2),strlen(session));
                 char* hexK2 = Int_To_Hex(newK2, strlen(session));
                 char* message2 = Encrypt_Message(hexK2,String_To_Hex(session));
 
-                snprintf(msgsend2,sizeof(msgsend2),"%s%s%s%s%s%s%s","RTR:SUCCESSREQCHAT:",token[2],":",token[3],":",message2,":!>\n");
+                snprintf(msgsend2,sizeof(msgsend2),"%s%s%s%s%s%s%s%d%s","RTR:SUCCESSREQCHAT:",token[2],":",token[3],":",message2,":",YA_Skey,":!>\n");
 
                 if(write(iter->active_sock,msgsend2,sizeof(msgsend2)) < 0){
                     printf("Server ERROR: on writing to client user 2\n");
