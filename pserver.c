@@ -47,7 +47,7 @@ typedef struct Active_Client{
     int active_sock, active_session;
     char client_IP[INET_ADDRSTRLEN];
     char username[MAX_USERNAME];
-    int q;
+    int Y;
     struct Active_Client* next;
 } Active_Client;
 
@@ -254,11 +254,12 @@ void signup_client(Client_List* l, char user[MAX_USERNAME], char pass[MAX_PASSWO
 }
 
 // Menambah list klien aktif
-void add_active_client(Active_Client_List *l, int newsock, char IP[INET_ADDRSTRLEN], char username[MAX_USERNAME]){
+void add_active_client(Active_Client_List *l, int newsock, char IP[INET_ADDRSTRLEN], char username[MAX_USERNAME], int y){
     Active_Client *temp = (Active_Client*)malloc(sizeof(Active_Client));
     strcpy(temp->client_IP,IP);
     strcpy(temp->username,username);
     temp->active_sock = newsock;
+    temp->Y = y;
 
     if(l->first==NULL){
         l->first = temp;
@@ -275,17 +276,17 @@ void add_active_client(Active_Client_List *l, int newsock, char IP[INET_ADDRSTRL
 }
 
 //Menambahkan public key q dan YB pada client
-void add_key_client(Active_Client_List *l, char username[MAX_USERNAME], int q){
+void add_key_client(Active_Client_List *l, char username[MAX_USERNAME], int y){
     Active_Client *iter = l->first;
     if(strcmp(l->first->username,username)==0){
-        l->first->q = q;
+        l->first->Y = y;
         return;
     }
     else{
         Active_Client *iter = l->first;
         do{
             if(strcmp(iter->username,username)==0){
-                iter->q = q;
+                iter->Y = y;
                 return;
             }
             else{
@@ -656,12 +657,6 @@ void *client_thread_func(void *arg){
             }
             printf("Server SUCCESS: on writing to client\n");
         }
-        //Set dictionary for public key of clients: REQ:SETKEY:User1:PublicKeyQ:!>
-        else if(strcmp("SETKEY",token[1])==0){
-            int q_C = atoi(token[3]);
-            add_key_client(&(thread_arg->ac_client),token[2],q_C);
-            printf("Server SUCCESS: adding public key dictionary\n");
-        }
         //Login client: REQ:LOGIN:User1:Encrypt(Pass,K):YC:!>
         //Mohon password user dienkripsi (untuk login saja)
         else if(strcmp(token[1],"LOGIN")==0){
@@ -674,11 +669,8 @@ void *client_thread_func(void *arg){
                 if(iter->next!=NULL) iter = iter->next;
                 else break;
             }
-            int q = iter->q;
-            int YA = atoi(token[4]);
-            int alpha = find_n_root(q);
-            int XB = rand()%q;
-            int K = (int)pow(YA,XB)%q;
+            int YB = atoi(token[4]);
+            int K = (int)pow(YB,XA_Skey)%q_Skey;
             char key[256];
             sprintf(key,"%d",K);
             char* newK;
@@ -706,7 +698,7 @@ void *client_thread_func(void *arg){
             else{
                 printf("Server SUCCESS: %s logged in successfully\n", token[2]);
                 char msgsend[1024];
-                add_active_client(&(thread_arg->ac_client),thread_arg->receiver_sock,thread_arg->receiver_IP,thread_arg->username);
+                add_active_client(&(thread_arg->ac_client),thread_arg->receiver_sock,thread_arg->receiver_IP,thread_arg->username,YB);
                 snprintf(msgsend,sizeof(msgsend),"%s%s%s","RTR:SUCCESSLOGIN:",token[2],":!>\n");
                 if(write((thread_arg->receiver_sock),msgsend,sizeof(msgsend)) < 0){
                     printf("Server ERROR: on writing to client\n");
@@ -783,6 +775,12 @@ void *client_thread_func(void *arg){
             else printf("Server SUCCESS: on writing to client\n");
             close((thread_arg->receiver_sock));
         }
+        //Set dictionary for public key of clients: REQ:SETKEY:User1:YB:!>
+        else if(strcmp("SETKEY",token[1])==0){
+            int YB = atoi(token[3]);
+            add_key_client(&(thread_arg->ac_client),token[2],YB);
+            printf("Server SUCCESS: adding public key dictionary\n");
+        }
         else if(strcmp(token[1],"LIST")==0){
             char msgsend[1024];
             Active_Client_List *list = &(thread_arg->ac_client);
@@ -821,7 +819,8 @@ void *client_thread_func(void *arg){
                     if(iter->next!=NULL) iter = iter->next;
                     else break;
                 }
-                int K = YA_Skey;
+                int YB = iter->Y;
+                int K = (int)pow(YB,XA_Skey)%q_Skey;
                 char key[256];
                 sprintf(key,"%d",K);
                 char session[MAX_SESS];
@@ -849,14 +848,15 @@ void *client_thread_func(void *arg){
                     if(iter->next!=NULL) iter = iter->next;
                     else break;
                 }
-                K = YA_Skey;
+                YB = iter->Y;
+                K = (int)pow(YB,XA_Skey)%q_Skey;
                 char key2[256];
                 sprintf(key2,"%d",K);
                 int* newK2 = Stream_Key(key2, strlen(key2),strlen(session));
                 char* hexK2 = Int_To_Hex(newK2, strlen(session));
                 char* message2 = Encrypt_Message(hexK2,String_To_Hex(session));
 
-                snprintf(msgsend2,sizeof(msgsend2),"%s%s%s%s%s%s%s%d%s","RTR:SUCCESSREQCHAT:",token[2],":",token[3],":",message2,":",YA_Skey,":!>\n");
+                snprintf(msgsend2,sizeof(msgsend2),"%s%s%s%s%s%s%s%d%s","RTR:SUCCESSREQCHAT:",token[3],":",token[2],":",message2,":",YA_Skey,":!>\n");
 
                 if(write(iter->active_sock,msgsend2,sizeof(msgsend2)) < 0){
                     printf("Server ERROR: on writing to client user 2\n");
