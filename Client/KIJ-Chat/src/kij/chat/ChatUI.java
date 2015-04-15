@@ -15,7 +15,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JPanel;
 import javax.swing.ScrollPaneConstants;
-import com.chilkatsoft.*;
+
 /**
  *
  * @author varis
@@ -24,6 +24,12 @@ public class ChatUI extends javax.swing.JFrame {
 
     private static ClientSocket UiChatting;
     public static String username;
+    private static int server_q;
+    private static int server_public;
+    private static int server_key;
+    private static int key;
+    private static String session;
+    private static String tujuan;
 
     /**
      * Creates new form ChatUI
@@ -295,7 +301,10 @@ public class ChatUI extends javax.swing.JFrame {
             try {
                 String username = TF_username.getText().trim();
                 String password = TF_password.getText().trim();
-                String req = "REQ:LOGIN:" + username + ":" + password + ":!>";
+                String req = "REQ:SETKEY:" + username +":"+ UiChatting.public_key +":!>";
+                sendReq(req);
+                String chiperPassword = encrypt(password);
+                req = "REQ:LOGIN:" + username + ":" + chiperPassword + ":" + Integer.toString(UiChatting.public_key) +":!>";
                 sendReq(req);
             } catch (Exception ex) {
                 Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
@@ -313,9 +322,25 @@ public class ChatUI extends javax.swing.JFrame {
         {
             String tujuan = C_list_online.getSelectedItem().toString().trim();
             String message = TF_message.getText();
-            String req = "REQ:CHAT:" + username + ":"+ tujuan + ":" + message + "SESSION:" + UiChatting.Sess_key + ":!>";
+            String req = "REQ:REQCHAT:" + username + ":"+ tujuan + ":"+ UiChatting.public_key + ":!>";
             sendReq(req);
+            String chipermessage = c_encrypt(message,session);
             
+            String hashValue = null;
+            
+            try {
+                SHA1 hash = new SHA1();
+                try {
+                    hashValue = hash.calcSHA1(message);
+                } catch (UnsupportedEncodingException ex) {
+                    Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            } catch (NoSuchAlgorithmException ex) {
+                Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            
+            req = "REQ:CHAT:" + username + ":"+ tujuan + ":"+ chipermessage +":" +hashValue + ":!>";
+            sendReq(req);
             TA_conversation.append(username + ": " + message);
         }
     }//GEN-LAST:event_B_sendActionPerformed
@@ -479,26 +504,11 @@ public class ChatUI extends javax.swing.JFrame {
             X.start();
             
             // *Req public key
-            CkDh dh = new CkDh();
-            boolean success;
-
-            success = dh.UnlockComponent("Sembarang");
-            if(success != true)
-            {
-                System.out.println(dh.lastErrorText());
-                return;
-            }
-
-            dh.UseKnownPrime(2);
-            String p;
-            int g;
-            p = dh.p();
-            g = dh.get_G();
+            
             String req;
             req = "REQ:REQKEY:!>";
             UiChatting.out.println(req);
             UiChatting.out.flush();
-            // End Req
             
         } catch (IOException ex) {
             Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
@@ -614,13 +624,47 @@ public class ChatUI extends javax.swing.JFrame {
                 }
                 else if("RCHAT".equals(items.get(1)))
                 {
-                    String sender = items.get(3);
-                    String message = items.get(4);
-                    printConversation(sender + " : " + message);
+                    String sender = items.get(2);
+                    String chiperText = items.get(4);
+                    String message = c_decrypt(chiperText, session);
+                    String hashValue = null;
+
+                    try {
+                        SHA1 hash = new SHA1();
+                        try {
+                            hashValue = hash.calcSHA1(message);
+                        } catch (UnsupportedEncodingException ex) {
+                            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    } catch (NoSuchAlgorithmException ex) {
+                        Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    if(!message.equals(hashValue))
+                    {
+                        System.out.println("tidak sama");
+                    }else{
+                        printConversation(sender + " : " + message);
+                    }
                 }
                 else if("SESSION".equals(items.get(1)))
                 {
                     UiChatting.Sess_key = items.get(2);
+                }
+                else if("KEYGEN".equals(items.get(1)))
+                {
+                    server_q = Integer.parseInt(items.get(3));
+                    server_public = Integer.parseInt(items.get(4));
+                    DH dh = new DH();
+                    UiChatting.private_key = dh.getPrivate(server_q);
+                    UiChatting.a_key = dh.getPrimitiveValue(server_q);
+                    UiChatting.public_key = ((int) Math.pow(UiChatting.a_key, UiChatting.private_key)) % server_q;
+                    UiChatting.ikey = ((int) Math.pow(server_public, UiChatting.private_key)) % server_q;
+                }
+                else if("SUCCESSREQCHAT".equals(items.get(1)))
+                {
+                    String chiperText =  items.get(4);
+                    session = decrypt(chiperText);
+                    tujuan = items.get(3);
                 }
                 break;
             case "RCV":
@@ -635,5 +679,83 @@ public class ChatUI extends javax.swing.JFrame {
     {
         TA_conversation.append(message);
     }
-    
+    private static String encrypt(String plaintext)
+    {
+        String ikey = Integer.toString(UiChatting.ikey);
+        byte[] akey;
+                
+        String chipertext = null;
+        try {
+            
+            akey = ikey.getBytes("UTF-8");
+            RC4 rc4 = new RC4(akey);
+            byte[] plainbyte = plaintext.getBytes("UTF-8");
+            byte[] chiperbyte = rc4.encrypt(plainbyte);
+
+            chipertext = new String(chiperbyte,"UTF-8");
+            
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return chipertext;
+    }
+    private static String decrypt(String chipertext)
+    {
+        String ikey = Integer.toString(UiChatting.ikey);
+        byte[] akey;
+                
+        String plaintext = null;
+        try {
+            
+            akey = ikey.getBytes("UTF-8");
+            RC4 rc4 = new RC4(akey);
+            byte[] chiperbyte = chipertext.getBytes("UTF-8");
+            byte[] plainbyte = rc4.decrypt(chiperbyte);
+
+            plaintext = new String(plainbyte,"UTF-8");
+            
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return plaintext;
+    }
+    private static String c_encrypt(String plaintext, String ikey)
+    {
+        
+        byte[] akey;
+                
+        String chipertext = null;
+        try {
+            
+            akey = ikey.getBytes("UTF-8");
+            RC4 rc4 = new RC4(akey);
+            byte[] plainbyte = plaintext.getBytes("UTF-8");
+            byte[] chiperbyte = rc4.encrypt(plainbyte);
+
+            chipertext = new String(chiperbyte,"UTF-8");
+            
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return chipertext;
+    }
+    private static String c_decrypt(String chipertext, String ikey)
+    {
+        byte[] akey;
+                
+        String plaintext = null;
+        try {
+            
+            akey = ikey.getBytes("UTF-8");
+            RC4 rc4 = new RC4(akey);
+            byte[] chiperbyte = chipertext.getBytes("UTF-8");
+            byte[] plainbyte = rc4.decrypt(chiperbyte);
+
+            plaintext = new String(plainbyte,"UTF-8");
+            
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return plaintext;
+    }
 }

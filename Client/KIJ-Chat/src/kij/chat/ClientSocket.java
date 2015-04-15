@@ -18,6 +18,10 @@ public class ClientSocket implements Runnable {
     private static String hostname;
     private static int port;
     String key;
+    int private_key;
+    int a_key;
+    int public_key;
+    int ikey;
     Socket sock;
     Scanner input;
     Scanner send = new Scanner(System.in);
