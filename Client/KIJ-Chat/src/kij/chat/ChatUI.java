@@ -301,8 +301,9 @@ public class ChatUI extends javax.swing.JFrame {
             try {
                 String username = TF_username.getText().trim();
                 String password = TF_password.getText().trim();
-                String req = "REQ:SETKEY:" + username +":"+ UiChatting.public_key +":!>";
-                sendReq(req);
+                String req;
+//                String req = "REQ:SETKEY:" + username +":"+ UiChatting.public_key +":!>";
+//                sendReq(req);
                 String chiperPassword = encrypt(password);
                 req = "REQ:LOGIN:" + username + ":" + chiperPassword + ":" + Integer.toString(UiChatting.public_key) +":!>";
                 sendReq(req);
@@ -495,7 +496,7 @@ public class ChatUI extends javax.swing.JFrame {
     }
 
     private void socketConnect(){
-        String hostname = "localhost";
+        String hostname = "10.151.44.50";
         int port = 9999;
         try {
             UiChatting = new ClientSocket(hostname, port);
@@ -652,8 +653,8 @@ public class ChatUI extends javax.swing.JFrame {
                 }
                 else if("KEYGEN".equals(items.get(1)))
                 {
-                    server_q = Integer.parseInt(items.get(3));
-                    server_public = Integer.parseInt(items.get(4));
+                    server_q = Integer.parseInt(items.get(2));
+                    server_public = Integer.parseInt(items.get(3));
                     DH dh = new DH();
                     UiChatting.private_key = dh.getPrivate(server_q);
                     UiChatting.a_key = dh.getPrimitiveValue(server_q);
@@ -692,7 +693,9 @@ public class ChatUI extends javax.swing.JFrame {
             byte[] plainbyte = plaintext.getBytes("UTF-8");
             byte[] chiperbyte = rc4.encrypt(plainbyte);
 
-            chipertext = new String(chiperbyte,"UTF-8");
+//            chipertext = new String(chiperbyte,"UTF-8");
+            chipertext = bytesToHex(chiperbyte);
+            
             
         } catch (UnsupportedEncodingException ex) {
             Logger.getLogger(ChatUI.class.getName()).log(Level.SEVERE, null, ex);
@@ -712,7 +715,9 @@ public class ChatUI extends javax.swing.JFrame {
             
             akey = ikey.getBytes("UTF-8");
             RC4 rc4 = new RC4(akey);
-            byte[] chiperbyte = chipertext.getBytes("UTF-8");
+//            byte[] chiperbyte = chipertext.getBytes("UTF-8");
+            byte[] chiperbyte = hexStringToByteArray(chipertext);
+            
             byte[] plainbyte = rc4.decrypt(chiperbyte);
 
             plaintext = new String(plainbyte,"UTF-8");
@@ -766,4 +771,24 @@ public class ChatUI extends javax.swing.JFrame {
         System.out.println("Plaintext (D client) : " + plaintext);
         return plaintext;
     }
+    final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
+    public static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for ( int j = 0; j < bytes.length; j++ ) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
+    public static byte[] hexStringToByteArray(String s) {
+        int len = s.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+                                 + Character.digit(s.charAt(i+1), 16));
+        }
+        return data;
+    }
+    
 }
