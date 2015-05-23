@@ -60,7 +60,7 @@ typedef struct Thread_Arg{
     int receiver_sock;
     char receiver_IP[INET_ADDRSTRLEN];
     char username[MAX_USERNAME];
-    int q, alpha;
+    int XA, YA, q, alpha;
     Active_Client_List ac_client;
     Client_List c_client;
 } Thread_Arg;
@@ -512,8 +512,8 @@ int* random_q_alpha(){
 
     int q_Skey = random_q, alpha_Skey = primitiveRoot[rq].root;
 
-    numbers[0] = random_q;
-    numbers[1] = (primitiveRoot[rq]).root;
+    numbers[0] = q_Skey;
+    numbers[1] = alpha_Skey;
     return numbers;
 }
 //end
@@ -554,9 +554,14 @@ int main()
      puts("Server SUCCESS: on binding");
      listen(sockfd,5);
 
-     puts("Server waiting for a client...");
-
 	 int q = random_q_alpha()[0], alpha = random_q_alpha()[1];
+	 int XA = (rand()%(q-1))+1;
+	 int YA = pow(alpha,XA);
+     YA = YA%q;
+	 
+	 printf("Server SUCCESS: got key XA = %d and YA = %d\n", XA, YA);	 
+	 
+	 puts("Server waiting for a client...");
 
      while(1){
         clilen = sizeof(cli_addr);
@@ -566,7 +571,7 @@ int main()
             close(sockfd);
             serror("Server ERROR: on accept");
         }
-        puts("Server SUCCESS: Server accepted");
+        puts("Server SUCCESS: Server accepted a client");
 
         srand(time(NULL));
 /*
@@ -587,6 +592,8 @@ int main()
         TAL.c_client = CL;
         TAL.q = q;
         TAL.alpha = alpha;
+        TAL.XA = XA;
+        TAL.YA = YA;
 
         if(pthread_create(&threads, NULL, client_thread_func, &TAL)){
             printf("Server ERROR: could not create thread\n");
@@ -621,13 +628,14 @@ void *client_thread_func(void *arg){
     Success= "Header:Status_Code:ID:!>"
     */
 
-    int q_Skey = (int)thread_arg->q, alpha_Skey = (int)thread_arg->alpha;
-
     // Primitive root
 
-    int XA_Skey = (rand()%(q_Skey-1))+1;
-    int YA_Skey = pow(alpha_Skey,XA_Skey);
-    YA_Skey = YA_Skey%q_Skey;
+	int q_Skey = (int)thread_arg->q;
+	int alpha_SKey = (int)thread_arg->alpha;
+    int XA_Skey = (int)thread_arg->XA;
+    int YA_Skey = (int)thread_arg->YA;
+    int YB_Ckey = -1;
+    int Key_Used = -1;
 
     while(1){
 
@@ -646,7 +654,7 @@ void *client_thread_func(void *arg){
             tokens = strtok(NULL,":!>");
             counter += 1;
         }
-
+		
 		//Request public key server
 		//RTR:KEYGEN:Server:PublicQ:!>
         if(strcmp("REQKEY",token[1])==0){
@@ -657,7 +665,14 @@ void *client_thread_func(void *arg){
             }
             printf("Server SUCCESS: on writing to client\n");
         }
-        //Login client: REQ:LOGIN:User1:Encrypt(Pass,K):YC:!>
+        //Set dictionary for public key of clients: REQ:SETKEY:User1:YB:!>
+        else if(strcmp("SETKEY",token[1])==0){
+            YB_Ckey = atoi(token[3]);
+            add_key_client(&(thread_arg->ac_client),token[2],YB_Ckey);
+            Key_Used = (pow(YB_Ckey,XA_Skey))%q_Skey;
+            printf("Server SUCCESS: adding public key dictionary\n");
+        }
+        //Login client: REQ:LOGIN:User1:Encrypt(Pass,K):!>
         //Mohon password user dienkripsi (untuk login saja)
         else if(strcmp(token[1],"LOGIN")==0){
             Active_Client_List *list = &(thread_arg->ac_client);
@@ -669,8 +684,7 @@ void *client_thread_func(void *arg){
                 if(iter->next!=NULL) iter = iter->next;
                 else break;
             }
-            int YB = atoi(token[4]);
-            int K = (int)pow(YB,XA_Skey)%q_Skey;
+            int K = Key_Used;
             char key[256];
             sprintf(key,"%d",K);
             char* newK;
@@ -710,8 +724,8 @@ void *client_thread_func(void *arg){
         }
         // Sementara password untuk register jangan dienkripsi
         else if(strcmp(token[1],"REGISTER")==0){
-            /*char key[256];
-            sprintf(key,"%d",K);
+            char key[256];
+            sprintf(key,"%d",Key_Used);
             char* newK;
             newK = (char*)malloc(512);
             strcpy(newK,Stream_Key_to_Hex(key,strlen(key),token[3]));
@@ -726,45 +740,26 @@ void *client_thread_func(void *arg){
 				else{
 					buf = newK[u];
 				}
-			}*/
+			}
 
             signup_client(&(thread_arg->c_client), token[2], token[3]);
             printf("Server SUCCESS: account %s created\n", token[2]);
             char msgsend[1024];
             snprintf(msgsend,sizeof(msgsend),"%s%s%s","RTR:SUCCESSREGISTER:",token[2],":!>\n");
-            /*add_active_client(&(thread_arg->ac_client),thread_arg->receiver_sock,thread_arg->session,thread_arg->receiver_IP,thread_arg->username);
-            printf("Server SUCCESS: %s logged in successfully\n", token[3]);*/
+            printf("Server SUCCESS: %s registered successfully\n", token[3]);
             if(write((thread_arg->receiver_sock),msgsend,sizeof(msgsend)) < 0){
                 printf("Server ERROR: on writing to client\n");
             }
             printf("Server SUCCESS: on writing to client\n");
         }
-    }
 
-    /*
-    Protokol pasca login
-    "Header:Status_code:ID_sender:ID_receiver:Data_block:!>"
-    Data_block = Message/LogOut
-    */
-
-    while(1){
-        bzero(buffer,sizeof(buffer));
-        read(thread_arg->receiver_sock,buffer,sizeof(buffer));
-
-        printf("Server Receive: %s\n", buffer);
-
-        char token[10][900];
-        char *tokens;
-
-        int counter = 0;
-        tokens = strtok(buffer,":!>");
-        while(tokens!=NULL){
-            strcpy(token[counter],tokens);
-            tokens = strtok(NULL,":!>");
-            counter += 1;
-        }
-
-        if(strcmp(token[1],"LOGOUT")==0){
+	    /*
+	    Protokol pasca login
+	    "Header:Status_code:ID_sender:ID_receiver:Data_block:!>"
+	    Data_block = Message/LogOut
+	    */
+		
+        else if(strcmp(token[1],"LOGOUT")==0){
             char msgsend[1024];
             delete_active_client(&(thread_arg->ac_client),token[2]);
             int successlog = set_offline_client(&(thread_arg->c_client),token[2]);
@@ -774,12 +769,6 @@ void *client_thread_func(void *arg){
             }
             else printf("Server SUCCESS: on writing to client\n");
             close((thread_arg->receiver_sock));
-        }
-        //Set dictionary for public key of clients: REQ:SETKEY:User1:YB:!>
-        else if(strcmp("SETKEY",token[1])==0){
-            int YB = atoi(token[3]);
-            add_key_client(&(thread_arg->ac_client),token[2],YB);
-            printf("Server SUCCESS: adding public key dictionary\n");
         }
         else if(strcmp(token[1],"LIST")==0){
             char msgsend[1024];
@@ -885,5 +874,9 @@ void *client_thread_func(void *arg){
             }
             else printf("Server SUCCESS: on writing to client user\n");
         }
+        else{
+        	printf("Server ERROR: accepted wrong header\n");
+		}
+        // Last
     }
 }
