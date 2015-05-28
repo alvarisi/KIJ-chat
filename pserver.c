@@ -558,9 +558,9 @@ int main()
 	 int XA = (rand()%(q-1))+1;
 	 int YA = pow(alpha,XA);
      YA = YA%q;
-	 
-	 printf("Server SUCCESS: got key XA = %d and YA = %d\n", XA, YA);	 
-	 
+
+	 printf("Server SUCCESS: got key XA = %d and YA = %d\n", XA, YA);
+
 	 puts("Server waiting for a client...");
 
      while(1){
@@ -654,7 +654,7 @@ void *client_thread_func(void *arg){
             tokens = strtok(NULL,":!>");
             counter += 1;
         }
-		
+
 		//Request public key server
 		//RTR:KEYGEN:Server:PublicQ:!>
         if(strcmp("REQKEY",token[1])==0){
@@ -669,7 +669,7 @@ void *client_thread_func(void *arg){
         else if(strcmp("SETKEY",token[1])==0){
             YB_Ckey = atoi(token[3]);
             add_key_client(&(thread_arg->ac_client),token[2],YB_Ckey);
-            Key_Used = (pow(YB_Ckey,XA_Skey))%q_Skey;
+            Key_Used = (int)(pow(YB_Ckey,XA_Skey))%q_Skey;
             printf("Server SUCCESS: adding public key dictionary\n");
         }
         //Login client: REQ:LOGIN:User1:Encrypt(Pass,K):!>
@@ -712,7 +712,7 @@ void *client_thread_func(void *arg){
             else{
                 printf("Server SUCCESS: %s logged in successfully\n", token[2]);
                 char msgsend[1024];
-                add_active_client(&(thread_arg->ac_client),thread_arg->receiver_sock,thread_arg->receiver_IP,thread_arg->username,YB);
+                add_active_client(&(thread_arg->ac_client),thread_arg->receiver_sock,thread_arg->receiver_IP,thread_arg->username,YB_Ckey);
                 snprintf(msgsend,sizeof(msgsend),"%s%s%s","RTR:SUCCESSLOGIN:",token[2],":!>\n");
                 if(write((thread_arg->receiver_sock),msgsend,sizeof(msgsend)) < 0){
                     printf("Server ERROR: on writing to client\n");
@@ -758,7 +758,7 @@ void *client_thread_func(void *arg){
 	    "Header:Status_code:ID_sender:ID_receiver:Data_block:!>"
 	    Data_block = Message/LogOut
 	    */
-		
+
         else if(strcmp(token[1],"LOGOUT")==0){
             char msgsend[1024];
             delete_active_client(&(thread_arg->ac_client),token[2]);
