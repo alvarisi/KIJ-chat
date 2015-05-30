@@ -703,7 +703,7 @@ void *client_thread_func(void *arg){
 				}
 			}
 
-            if(checklogin_client(&(thread_arg->c_client), token[2], pass) == 0){
+            if(checklogin_client(&(thread_arg->c_client), token[2], pass) == 0 || strcmp(iter->username, token[2])==0){
                 char msgserver[1024];
                 snprintf(msgserver,sizeof(msgserver),"%s%s%s","RTR:FAILEDLOGIN:",token[2],":!>\n");
                 write(thread_arg->receiver_sock,msgserver,strlen(msgserver));
